@@ -14,13 +14,13 @@ Usage:
 """
 
 import argparse
+import difflib
 import hashlib
 import os
 import re
 import shutil
 import sys
-import difflib
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from string import Template
 from typing import Dict, List, Optional, Tuple
@@ -60,7 +60,7 @@ def load_manifest() -> dict:
     if not MANIFEST_PATH.exists():
         die(f"Manifest not found: {MANIFEST_PATH}")
     try:
-        with open(MANIFEST_PATH, "r") as f:
+        with open(MANIFEST_PATH) as f:
             data = yaml.safe_load(f)
     except Exception as e:
         die(f"Failed to parse manifest: {e}")
@@ -70,7 +70,7 @@ def load_manifest() -> dict:
 def load_state() -> dict:
     if STATE_PATH.exists():
         try:
-            with open(STATE_PATH, "r") as f:
+            with open(STATE_PATH) as f:
                 return yaml.safe_load(f) or {"version": "1.0", "tracked_files": {}}
         except Exception:
             pass
@@ -87,7 +87,7 @@ def compute_hash(content: str) -> str:
 
 
 def parse_claude_md_sections() -> Dict[str, str]:
-    with open(CANONICAL_MD, "r") as f:
+    with open(CANONICAL_MD) as f:
         content = f.read()
     lines = content.splitlines(keepends=True)
 
@@ -131,7 +131,7 @@ def discover_skills() -> List[Dict[str, str]]:
         skill_ref = name
 
         try:
-            with open(skill_md, "r") as f:
+            with open(skill_md) as f:
                 content = f.read()
             lines = content.splitlines()
 
@@ -258,7 +258,7 @@ def safety_check_variables(variables: Dict[str, str]):
 
 
 def render_template(template_path: Path, variables: Dict[str, str]) -> str:
-    with open(template_path, "r") as f:
+    with open(template_path) as f:
         tmpl = f.read()
     return Template(tmpl).safe_substitute(**variables)
 
@@ -334,7 +334,7 @@ def _preview_diff(target: str, target_info: dict, outputs: Dict[str, str], state
         display_path = target_info.get("output_dir", ".") + "/" + filename
 
         if out_path.exists():
-            with open(out_path, "r") as f:
+            with open(out_path) as f:
                 old_content = f.read()
         else:
             old_content = ""
@@ -401,7 +401,7 @@ def _apply_target(target: str, target_info: dict, outputs: Dict[str, str], state
         rel_path = str(out_path.relative_to(REPO_ROOT))
         tracked[rel_path] = {
             "owner": "bb-adapter",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "target": target,
             "sections": section_entries,
         }

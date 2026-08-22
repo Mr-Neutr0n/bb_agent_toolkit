@@ -3,10 +3,9 @@
 import argparse
 import hashlib
 import json
-import os
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SCHEMA = """
@@ -99,7 +98,7 @@ def register_artifact(kind, path, run_id=None, skill=None, workflow=None,
         plan_id=plan_id, step_id=step_id, finding_id=finding_id
     )
     file_hash = sha256 or _file_hash(path)
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
     redacted_path = path
 
     conn = sqlite3.connect(db_path)

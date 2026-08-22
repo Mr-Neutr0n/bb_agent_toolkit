@@ -16,7 +16,7 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _version(text: str) -> str:
@@ -64,7 +64,7 @@ def run():
     if not tool_names:
         tool_names = sorted(registry.keys())
 
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     filter_display_val = filter_val
     if filter_type == "workflow" and filter_val2:

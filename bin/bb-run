@@ -1,11 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+VERSION="3.0.0"
+
+usage() {
+  cat <<'EOF'
+bb-run - execute one workflow from a skill's skill.yaml
+
+Usage:
+  bb-run <skill> <workflow>     Run a workflow with the current RunContext
+  bb-run list                   List all skills
+  bb-run <skill> list           List workflows for one skill
+  bb-run --help                 Show this help
+  bb-run --version              Show version
+
+Examples:
+  bb-run recon passive-subdomains
+  bb-run auth oauth-conformance
+  bb-run identity-domain list
+
+Workflows live in .claude/skills/<skill>/skill.yaml.
+Context comes from .bb/context.env (run bin/bb-init first).
+EOF
+}
+
+if [ $# -ge 1 ]; then
+  case "$1" in
+    -h|--help|help) usage; exit 0 ;;
+    -v|--version) echo "bb-run $VERSION"; exit 0 ;;
+  esac
+fi
+
+# Discovery: list all skills
+if [ "${1:-}" = "list" ]; then
+  python3 - <<'PY'
+import glob, sys, yaml
+for p in sorted(glob.glob(".claude/skills/*/skill.yaml")):
+    try:
+        d = yaml.safe_load(open(p))
+        desc = str(d.get("description", "")).splitlines()[0][:80] if d.get("description") else ""
+        print(f"{d.get('name', p.split('/')[2]):20} {desc}")
+    except Exception as e:
+        print(f"{p}: parse error ({e})", file=sys.stderr)
+PY
+  exit 0
+fi
+
 if [ $# -lt 2 ]; then
-  echo "Usage: bb-run <skill> <workflow>"
-  echo "Example: bb-run xss reflected"
-  echo ""
-  echo "Available workflows are in .claude/skills/<skill>/runbooks/"
+  usage
   exit 1
 fi
 
@@ -13,9 +55,47 @@ SKILL="$1"
 WORKFLOW="$2"
 SCRIPT_DIR=".claude/skills/${SKILL}"
 
+if [ "$WORKFLOW" = "list" ] || [ "$WORKFLOW" = "-l" ]; then
+  python3 - "$SCRIPT_DIR/skill.yaml" "$SKILL" <<'PY'
+import sys
+try:
+    import yaml
+except ImportError:
+    __import__("subprocess").check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "-q", "pyyaml"])
+    import yaml
+d = yaml.safe_load(open(sys.argv[1]))
+print(f"{sys.argv[2]} v{d.get('version', '?')} - {str(d.get('description','')).strip()[:100]}")
+for name, wf in (d.get("workflows") or {}).items():
+    tier = wf.get("safety_tier") or (d.get("safety_tier") or "?")
+    desc = str(wf.get("description", "")).splitlines()[0][:70]
+    print(f"  {name:28} [{tier:<14}] {desc}")
+PY
+  exit 0
+fi
+
 if [ ! -f "${SCRIPT_DIR}/skill.yaml" ]; then
-  echo "ERROR: No skill.yaml found for ${SKILL}"
+  echo "ERROR: No skill.yaml found for '${SKILL}'"
+  echo "Run 'bb-run list' to see available skills."
   exit 1
+fi
+
+if [ "$WORKFLOW" = "list" ] || [ "$WORKFLOW" = "-l" ]; then
+  python3 - "$SCRIPT_DIR/skill.yaml" "$SKILL" <<'PY'
+import sys
+sys.path.insert(0, "tools")
+try:
+    import yaml
+except ImportError:
+    __import__("subprocess").check_call([sys.executable, "-m", "pip", "install", "--break-system-packages", "-q", "pyyaml"])
+    import yaml
+d = yaml.safe_load(open(sys.argv[1]))
+print(f"{sys.argv[2]} v{d.get('version', '?')} - {str(d.get('description','')).strip()[:100]}")
+for name, wf in (d.get("workflows") or {}).items():
+    tier = wf.get("safety_tier", "?")
+    desc = str(wf.get("description", "")).splitlines()[0][:70]
+    print(f"  {name:28} [{tier:<14}] {desc}")
+PY
+  exit 0
 fi
 
 # Source context and export it so preflight helpers see the same RunContext.
@@ -141,6 +221,13 @@ for tool in tools:
         highest = tier
 print(highest if registry else 'active-safe')
 ")
+SKILL_TOOLS=$(python3 -c "
+import yaml
+with open('${SCRIPT_DIR}/skill.yaml') as f:
+    tools = yaml.safe_load(f).get('tools_required', []) or []
+print(' '.join(str(t) for t in tools))
+" 2>/dev/null)
+SKILL_TOOLS="${SKILL_TOOLS:-}"
 
 echo "=== Running: ${SKILL}/${WORKFLOW} ==="
 echo "$WF_CMD"
@@ -154,6 +241,8 @@ S_SECS=$(python3 -c "import datetime,sys; d=datetime.datetime.strptime(sys.argv[
 E_SECS=$(python3 -c "import datetime,sys; d=datetime.datetime.strptime(sys.argv[1],'%Y-%m-%dT%H:%M:%SZ'); print(int(d.timestamp()*1000))" "$ENDED_AT")
 DURATION_MS=$((E_SECS - S_SECS))
 
+# Intentional word split below: each tool name becomes its own --tools-required arg
+# shellcheck disable=SC2086
 python3 tools/run_trace.py record \
   --skill "$SKILL" \
   --workflow "$WORKFLOW" \
@@ -163,6 +252,7 @@ python3 tools/run_trace.py record \
   --target-hash "$TARGET_HASH" \
   --program "${PROGRAM:-}" \
   --scope-file-hash "$SCOPE_HASH" \
+  --tools-required $SKILL_TOOLS \
   --started-at "$STARTED_AT" \
   --ended-at "$ENDED_AT"
 

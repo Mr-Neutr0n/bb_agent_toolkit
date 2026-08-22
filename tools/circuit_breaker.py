@@ -28,7 +28,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 TRACE_FILE = Path(".bb/traces/runs.jsonl")
@@ -36,7 +36,7 @@ CIRCUIT_DIR = Path(".bb/circuit")
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def threshold() -> int:

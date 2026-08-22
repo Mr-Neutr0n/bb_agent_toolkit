@@ -19,10 +19,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pyyaml
+        run: pip install pyyaml ruff
 
       - name: make test
         run: make test
+
+      - name: Lint (ruff + shellcheck)
+        run: |
+          ruff check tools/ bin/bb-tools-doctor.py
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck bin/bb-run bin/bb-init bin/bb-validate bin/bb-hunt
 
       - name: make validate
         run: make validate

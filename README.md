@@ -1,5 +1,10 @@
 # BountyHarness
 
+[![CI](https://github.com/Mr-Neutr0n/bounty-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Mr-Neutr0n/bounty-harness/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Skills](https://img.shields.io/badge/skill_packages-45-8A2BE2)
+
 **BountyHarness** is an open-source agent harness for authorized bug bounty and application security research.
 
 It gives security agents a disciplined operating model: a thin command harness for context, scope, tools, and execution, plus fat skill packages that hold the actual workflows, scripts, runbooks, payloads, evidence rules, and reporting guidance.
@@ -19,15 +24,29 @@ Modern bug bounty work is not one scanner. It is a loop:
 
 BountyHarness packages that loop into reusable, inspectable workflows so an agent does not need to invent a new pipeline every time.
 
+## Quick Start
+
+```bash
+git clone https://github.com/Mr-Neutr0n/bounty-harness.git
+cd bounty-harness
+make test                      # verify everything parses and compiles
+
+bin/bb-init example.com --program example --scope-file scope.txt
+bin/bb-run list                          # see all 45 skills
+bin/bb-run recon list                    # see a skill's workflows
+bin/bb-hunt https://example.com --time-budget 1h   # autonomous campaign
+```
+
 ## Highlights
 
-- **39 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, reporting, and more.
+- **45 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, CI/CD, GraphQL, web3, identity infrastructure, reporting, and more.
 - **Autonomous campaigns** with `bin/bb-hunt`: context init, recon, domain modeling, technique matching, planning, priority-ordered execution, and reporting from one URL.
 - **Thin harness, fat skills**: the harness dispatches; the skills contain the security logic.
 - **Tool registry** for install, health checks, version locking, capability mapping, and risk tiers across 99 external tools.
-- **Safety model** with passive, active-safe, intrusive, and destructive-manual tiers.
+- **Safety model** with passive, active-safe, intrusive, and destructive-manual tiers; circuit breaker blocks a target after repeated consecutive failures.
 - **Scope-aware workflows** with rate limits, local-only output, and explicit evidence standards.
-- **Planning and knowledge systems**: domain model, technique KB, coverage ledger, program memory, asset graph, traffic corpus, and vulnerability intelligence.
+- **Planning and knowledge systems**: domain model, technique KB, coverage ledger, program memory (with negative-result tracking), asset graph, traffic corpus, and vulnerability intelligence.
+- **Workflow tracing**: every run records timing, safety tier, tools used, and exit codes to `.bb/traces/runs.jsonl`.
 - **Impact verification and reporting**: candidate aggregation, false-positive gates, CVSS/report generation, and HackerOne/Bugcrowd/generic platform exports.
 
 ## Architecture
@@ -178,8 +197,9 @@ Grouped by area:
 | Web vulnerabilities | `xss`, `sqli`, `ssrf`, `rce`, `file-upload`, `cors-csrf`, `race-condition`, `http-protocol`, `nuclei-scanner` |
 | Auth, API, business logic | `auth`, `api`, `persona`, `cross-account`, `business-logic`, `impact-verifier` |
 | Cloud, mobile, browser, AI | `cloud`, `mobile`, `modern-browser`, `ai-llm`, `agent-safety`, `oob-infra` |
-| Research and reporting | `osint`, `vuln-intel`, `auto-research`, `standard-catalog`, `reporting`, `program-memory`, `scope-manager` |
-| Toolkit improvement | `evaluation-harness`, `skill-scientist`, `privesc` |
+| Specialized audits | `cicd-security`, `graphql-audit`, `web3-audit`, `meme-coin-audit`, `identity-domain`, `privesc` |
+| Research and reporting | `osint`, `vuln-intel`, `auto-research`, `standard-catalog`, `reporting`, `program-memory`, `scope-manager`, `triage-validation` |
+| Toolkit improvement | `evaluation-harness`, `skill-scientist` |
 
 Each skill has:
 

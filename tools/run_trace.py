@@ -144,6 +144,7 @@ def derive_safety_tier(tools_required: list, registry_paths: list | None = None)
     the tool registry on disk.  Returns 'active-safe' when no registry data
     is available."""
     import glob
+
     import yaml
 
     if registry_paths is None:

@@ -52,7 +52,7 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 if [ -z "$PROGRAM" ]; then
   case "$TARGET" in
     *openai*|*chatgpt*) PROGRAM="openai" ;;
-    *ycombinator*|news.ycombinator.com|news.ycombinator.net) PROGRAM="ycombinator" ;;
+    *ycombinator*) PROGRAM="ycombinator" ;;
   esac
 fi
 

@@ -10,9 +10,14 @@ Subcommands:
   audit-release     Full release gate — runs all audits + stale doc checks
 """
 
-import os, sys, subprocess, json, yaml, re
-from datetime import datetime, timezone
+import json
+import re
+import subprocess
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
+
+import yaml
 
 SKILLS_DIR = Path(".claude/skills")
 CONTEXT_FILE = Path(".bb/context.json")
@@ -274,16 +279,6 @@ def check_skill(skill_path, schemas=None, tool_registry=None, technique_skills=N
 
     def deduct_ss(subscore_key, amount):
         nonlocal meta_score, wf_score, scripts_score, safety_score, evidence_score, toolreg_score, rbp_score, st_score
-        ss_map = {
-            "metadata_schema": "meta_score",
-            "workflows": "wf_score",
-            "scripts": "scripts_score",
-            "safety_model": "safety_score",
-            "evidence_model": "evidence_score",
-            "tool_registry": "tool_registry",
-            "runbooks_payloads": "rbp_score",
-            "standards_techniques": "st_score",
-        }
         if subscore_key == "metadata_schema":
             meta_score = max(0, meta_score - amount)
         elif subscore_key == "workflows":
@@ -684,7 +679,7 @@ def _build_json_report(results, all_issues):
 
     return {
         "toolkit_version": TOOLKIT_VERSION,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "skills": [
             {
                 "name": r["name"],
@@ -724,7 +719,7 @@ def cmd_default(json_output=False, schemas=None):
 
     print("\n=== Skill Quality Report ===")
     print(f"Toolkit Version: {TOOLKIT_VERSION}")
-    print(f"Timestamp: {datetime.now(timezone.utc).isoformat()}\n")
+    print(f"Timestamp: {datetime.now(UTC).isoformat()}\n")
     total = 0
     for r in results:
         status = "PASS" if r["score"] >= PASS_THRESHOLD else "FAIL"
@@ -777,7 +772,7 @@ def cmd_audit_skill(skill_name, json_output=False, schemas=None):
 
     print(f"\n=== Deep Audit: {skill_name} ===\n")
     print(f"Score: {r['score']}/100")
-    print(f"\nSubscores:")
+    print("\nSubscores:")
     for k, v in r.get("subscores", {}).items():
         bar = "█" * (v // 2)
         print(f"  {k:25s} [{bar:10s}] {v}")

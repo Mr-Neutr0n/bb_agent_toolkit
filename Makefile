@@ -1,7 +1,8 @@
-.PHONY: init validate test clean audit secrets release-check doctor
+.PHONY: init validate test lint clean audit secrets release-check doctor help
 
 init:
-	@echo "Run: bin/bb-init <target>"
+	@echo "Usage: bin/bb-init <target> [--program NAME] [--scope-file FILE]"
+	@echo "Creates .bb/context.env and .bb/context.json for the engagement."
 
 validate:
 	python3 tools/validate_skills.py
@@ -16,6 +17,10 @@ test:
 		done; \
 	done; \
 	exit $$status
+
+lint:
+	@command -v ruff >/dev/null 2>&1 && ruff check tools/ bin/bb-tools-doctor.py --quiet || echo "ruff not installed; skipping (pip install ruff)"
+	@command -v shellcheck >/dev/null 2>&1 && shellcheck bin/bb-run bin/bb-init bin/bb-validate bin/bb-hunt || echo "shellcheck not installed; skipping (brew install shellcheck)"
 
 clean:
 	rm -rf output/test-* output/quality_report.json
@@ -33,3 +38,12 @@ release-check: test validate secrets
 
 doctor:
 	bin/bb-tools doctor
+
+help:
+	@echo "make test           - parse + compile every skill"
+	@echo "make lint           - ruff (python) + shellcheck (bash) if installed"
+	@echo "make validate       - skill quality validator"
+	@echo "make audit          - workflow + security audits"
+	@echo "make secrets        - gitleaks scan"
+	@echo "make release-check  - full release gate"
+	@echo "make doctor         - external tool health checks"
