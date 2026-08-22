@@ -1,0 +1,26 @@
+SPN regex classes matched by spn_osint.py:
+MSSQLSvc/<host>[:1433]
+HTTP/<host>
+HOST/<host>
+cifs/<host>
+termsrv/<host>
+RPCSS/<host>
+WSMAN/<host>
+ldap/<host>
+
+Negotiate realm leak shapes:
+WWW-Authenticate: Negotiate realm="CORP"
+WWW-Authenticate: NTLM B64TYPE2CHALLENGE
+
+Where SPNs leak in practice:
+- JS config objects (apiBaseUrl, ssoRealm, servicePrincipal fields)
+- Error templates echoing full principal names
+- Source maps of auth-related bundles
+- OpenAPI/GraphQL introspection descriptions
+- Kerberos error text in 401 responses (KRB_AP_ERR_MODIFIED leaks target SPN)
+
+High-value SPN targets when found:
+MSSQLSvc  -> SQL service accounts, kerberoastable post-auth
+HTTP      -> web SSO service accounts
+cifs      -> file share paths, relay-relevant topology
+ldap      -> domain controller hints

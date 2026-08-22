@@ -1,0 +1,63 @@
+id: identity-ntlm-info-leak
+name: NTLM Challenge Info Leak on External Scope
+category: identity
+description: >
+  Externally reachable web endpoints offering WWW-Authenticate: NTLM or Negotiate
+  disclose internal naming when the Type 2 challenge is decoded: NetBIOS domain,
+  host FQDN, DNS domain/tree, and build hints via AV_PAIRs. Valuable alone as an
+  info leak and as substrate for phishing-impact and topology-chain narratives.
+severity: low
+standards:
+  wstg:
+    - WSTG-IDNT-01
+    - WSTG-INFO-02
+  asvs:
+    - "V3.1.1"
+  vrt:
+    - server_security_misconfiguration.misconfigured_dns
+  cwe:
+    - CWE-200
+applies_to:
+  archetypes:
+    - enterprise-api
+    - vpn-gateway
+    - exchange-edge
+  surfaces:
+    - http-endpoint
+requires:
+  auth: none
+  inputs:
+    - live host list from recon
+  tools:
+    - python3
+signals:
+  positive:
+    - WWW-Authenticate header offers NTLM or Negotiate on external scope
+    - Type 2 challenge decodes plausible internal domain/host names
+  negative:
+    - Challenge decodes to CDN/proxy vendor names only (auth terminated upstream)
+false_positives:
+  - Auth proxy terminating NTLM before origin
+evidence_required:
+  - Raw request/response pair with full WWW-Authenticate header
+  - Decoded Type 2 fields with raw base64 artifact
+safety:
+  tier: active-safe
+  rate_limited: true
+  data_modifying: false
+workflow_mapping:
+  skill: identity-domain
+  workflow: ntlm-recon
+related_skills:
+  - recon
+  - scope-manager
+payloads:
+  - name: null_negotiate_probe
+    description: Null-session NEGOTIATE token in Authorization header
+    examples:
+      - "Authorization: NTLM TlRMTVNTUAABAAAAB4IIAAAAAAAAAAAAAAAAAAAAAAA="
+tags:
+  - ntlm
+  - information-disclosure
+  - active-directory
+  - windows

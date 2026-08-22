@@ -1,0 +1,63 @@
+id: identity-adcs-web-enrollment-exposed
+name: ADCS Web Enrollment Exposure Without Verifiable EPA
+category: identity
+description: >
+  Active Directory Certificate Services web enrollment roles (certsrv, CES,
+  mscep, CertEnroll) reachable from external scope. External parties cannot verify
+  EPA/channel-binding enforcement (KB5005413), so exposure is reported as a
+  configuration finding requiring owner confirmation. Historically the entry point
+  for ESC8 NTLM-relay-to-certificate chains.
+severity: medium
+standards:
+  wstg:
+    - WSTG-CONF-04
+  asvs:
+    - "V14.1.2"
+  cwe:
+    - CWE-16
+applies_to:
+  archetypes:
+    - vpn-gateway
+    - pki-portal
+    - exchange-edge
+  surfaces:
+    - http-endpoint
+requires:
+  auth: none
+  inputs:
+    - candidate hostnames from recon (pki, cert, ca, vpn naming patterns)
+  tools:
+    - python3
+signals:
+  positive:
+    - /certsrv/, /_CES_*/, /certsrv/mscep/ respond 200/401/403 externally
+    - Windows-integrated auth offered on enrollment surface
+  negative:
+    - Uniform WAF 403 across all probed paths
+    - Retired CA static pages without backend services
+false_positives:
+  - Decommissioned pages kept online with no CA backing
+evidence_required:
+  - Status and auth scheme per endpoint path probed
+  - KB5005413 note in report framing
+safety:
+  tier: passive
+  rate_limited: true
+  data_modifying: false
+workflow_mapping:
+  skill: identity-domain
+  workflow: adcs-fingerprint
+related_skills:
+  - identity-domain
+  - recon
+payloads:
+  - name: endpoint_paths
+    description: ADCS web role path inventory for GET-only probing
+    examples:
+      - "/certsrv/"
+      - "/_CES_Kerberos/service.svc"
+tags:
+  - adcs
+  - certificate-services
+  - active-directory
+  - misconfiguration

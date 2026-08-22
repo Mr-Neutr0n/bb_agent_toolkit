@@ -1,0 +1,175 @@
+name: identity-domain
+version: "1.0.0"
+description: >
+  No-creds identity infrastructure recon on external scope: NTLM challenge leaks,
+  ADCS web enrollment exposure, ADFS/SAML endpoints, Entra tenant metadata,
+  governed Kerberos username enumeration, SPN OSINT. Header/DNS/XML level only;
+  no relay, coercion, or credential attacks.
+bounded_context: IdentityContext
+safety_tier: passive
+owasp_wstg:
+  - WSTG-INFO-02
+  - WSTG-IDNT-01
+  - WSTG-IDNT-03
+owasp_api_top10: []
+severity_range: [info, low, medium, high]
+tools_required:
+  - python3
+  - dig
+  - curl
+input_files: []
+workflows:
+  ntlm-recon:
+    description: Probe live hosts for WWW-Authenticate NTLM/Negotiate and decode Type 2 challenge (domain, host FQDN, OS info).
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/identity_recon.py ntlm-recon \
+        --hosts-file "${HOSTS_FILE:?Set HOSTS_FILE to live hosts list}" \
+        --output $OUTDIR/identity/ntlm_recon.json
+    outputs:
+      - $OUTDIR/identity/ntlm_recon.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "WWW-Authenticate NTLM/Negotiate on external host exposes internal naming"
+      - "Type 2 challenge decodes NetBIOS domain, DNS host/domain, forest info"
+    false_positives:
+      - "Proxy/WAF terminates auth and returns its own challenge realm"
+      - "Public test endpoints deliberately exposing NTLM"
+    next:
+      if_findings: spn-osint
+      if_no_findings: adcs-fingerprint
+
+  adcs-fingerprint:
+    description: Enumerate certsrv/CES/mscep/CertEnroll endpoints; flag web enrollment exposure without verifiable EPA.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/identity_recon.py adcs-fingerprint \
+        --host "${ADCS_HOST:?Set ADCS_HOST}" \
+        --output $OUTDIR/identity/adcs_fingerprint.json
+    outputs:
+      - $OUTDIR/identity/adcs_fingerprint.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "/certsrv or CES/mscep endpoints respond with 200/401/403 on external scope"
+      - "Windows-integrated auth on enrollment surface; KB5005413 relevance"
+    false_positives:
+      - "Generic 403 from WAF on all paths is not exposure"
+      - "Retired CA pages kept online without backend"
+    next:
+      if_findings: adfs-endpoints
+      if_no_findings: entra-recon
+
+  adfs-endpoints:
+    description: Fingerprint ADFS paths and parse FederationMetadata.xml for entityID, certificates, WS-Trust exposure.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/identity_recon.py adfs-endpoints \
+        --host "${ADFS_HOST:?Set ADFS_HOST}" \
+        --output $OUTDIR/identity/adfs_endpoints.json
+    outputs:
+      - $OUTDIR/identity/adfs_endpoints.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "ADFS login/trust endpoints reachable externally"
+      - "FederationMetadata parsed: entityID, signing certs count, endpoints"
+    false_positives:
+      - "Third-party SSO pages mimicking /adfs path layout"
+    next:
+      if_findings: entra-recon
+      if_no_findings: entra-recon
+
+  entra-recon:
+    description: Entra tenant metadata via getuserrealm, OIDC well-known, DKIM MOERA selectors, MDI instance check.
+    inputs: [TARGET, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/identity_recon.py entra-recon \
+        --domain "$TARGET" \
+        --output $OUTDIR/identity/entra_tenant.json
+    outputs:
+      - $OUTDIR/identity/entra_tenant.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "Tenant federation status, tenant GUID, MOERA prefix disclosed"
+      - "Defender for Identity instance presence indicates AD hybrid estate"
+    false_positives:
+      - "Microsoft-managed (non-federated) tenants return managed status only"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+  kerberos-userenum:
+    description: Governed AS-REQ username diff when 88/tcp is explicitly in scope. Requires kerbrute binary.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/kerberos_enum.py userenum \
+        --host "${KDC_HOST:?Set KDC_HOST}" \
+        --users "${USERS_FILE:?Set USERS_FILE}" \
+        ${PORT88_IN_SCOPE:+--port88-in-scope} \
+        --output $OUTDIR/identity/kerberos_enum.json
+    outputs:
+      - $OUTDIR/identity/kerberos_enum.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "Valid usernames confirmed via AS-REQ diff (event 4768 only, no lockout)"
+    false_positives:
+      - "Realm misconfiguration marks all users invalid"
+    next:
+      if_findings: spn-osint
+      if_no_findings: null
+
+  owa-userenum:
+    description: MANUAL-GATED timed-response username validation on scoped OWA/login portals. Dry-run candidate listing by default.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      echo "INTRUSIVE workflow. Requires explicit human approval + lockout-safe rate plan." > $OUTDIR/identity/owa_userenum.MANUAL.md && \
+      echo "See runbooks/06-owa-userenum.md before enabling. Never automated against production." >> $OUTDIR/identity/owa_userenum.MANUAL.md && \
+      cat $OUTDIR/identity/owa_userenum.MANUAL.md
+    outputs:
+      - $OUTDIR/identity/owa_userenum.MANUAL.md
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: intrusive
+    detection_signals:
+      - "Timing/error deltas distinguish valid vs invalid usernames"
+    false_positives:
+      - "CDN caching flattens timing differences into noise"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+  spn-osint:
+    description: Hunt leaked SPNs (MSSQLSvc/host:port etc) and Negotiate realms in JS bundles, headers, and text artifacts.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/identity && \
+      python3 .claude/skills/identity-domain/scripts/spn_osint.py scan \
+        --path "${SPN_SCAN_PATH:-$OUTDIR/recon/js/js_downloads}" \
+        --output $OUTDIR/identity/spn_osint.json
+    outputs:
+      - $OUTDIR/identity/spn_osint.json
+    evidence_dir: $OUTDIR/identity/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "Service principal names leaked in client-side bundles reveal internal topology"
+      - "Negotiate realm strings in saved headers expose domain names"
+    false_positives:
+      - "Example/doc strings in third-party libraries"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  ntlm_leak: "Raw WWW-Authenticate header, decoded Type 2 fields, request/response pair"
+  adcs_exposure: "Endpoint paths probed, status codes, auth schemes, KB5005413 note"
+  adfs_metadata: "Parsed FederationMetadata.xml fields plus raw XML artifact"
+  tenant_metadata: "getuserrealm/OIDC/DKIM responses proving disclosure"

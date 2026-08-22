@@ -1,0 +1,38 @@
+Common NTLM-bearing paths probed by ntlm-recon:
+/
+/rpc
+/EWS/
+/EWS/Exchange.asmx
+/autodiscover/autodiscover.xml
+/adfs/ls/
+/certsrv/
+/owa/
+/Microsoft-Server-ActiveSync
+
+ADCS web enrollment surface:
+/certsrv/
+/certsrv/mscep/
+/certsrv/mscep/mscep.dll
+/certsrv/certfnsh.asp
+/_CES_Kerberos/service.svc
+/_CES_Kerberos/password
+/_CES_NTLM/service.svc
+/CertEnroll/
+/ADPolicyProvider_CEP_CertificateService.svc
+/.well-known/est/simpleenroll
+
+ADFS surface:
+/adfs/ls/
+/adfs/ls/idpinitiatedsignon.aspx
+/adfs/oauth2/authorize
+/adfs/oauth2/token
+/adfs/services/trust/2005/usernamemixed
+/adfs/services/trust/2005/windowstransport
+/FederationMetadata/2007-06/FederationMetadata.xml
+
+Entra unauthenticated lookups (current as of 2026-08):
+https://login.microsoftonline.com/getuserrealm.svc?xml=1&email=test@DOMAIN
+https://login.microsoftonline.com/DOMAIN/v2.0/.well-known/openid-configuration
+selector1._domainkey.DOMAIN (CNAME)
+selector2._domainkey.DOMAIN (CNAME)
+DOMAIN.atp.azure.com (MDI instance)

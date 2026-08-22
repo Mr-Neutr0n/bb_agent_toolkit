@@ -176,6 +176,7 @@ Always prefer `bin/bb-run <skill> <workflow>` after context is initialized. If y
 | 42 | `web3-audit` | Smart contract audit: DeFi bug classes, Foundry PoC, kill signals. |
 | 43 | `meme-coin-audit` | Token rug-pull detection, Solana SPL risks, DEX liquidity attacks. |
 | 44 | `triage-validation` | Pre-report validation gate: 7-question gate and submission checklists. |
+| 45 | `identity-domain` | No-creds identity infra recon: NTLM leaks, ADCS/ADFS endpoints, Entra tenant metadata, SPN OSINT. |
 
 ## Dispatch Rules
 
@@ -220,6 +221,7 @@ Always prefer `bin/bb-run <skill> <workflow>` after context is initialized. If y
 | Program knowledge, false-positive history | `program-memory` |
 | Latest CVEs, disclosed reports, PoCs for target | `vuln-intel` |
 | Scope validation, out-of-scope guardrails | `scope-manager` |
+| ADFS, certsrv, NTLM leaks, Entra tenant, SPN leaks on scope | `identity-domain` |
 
 If multiple skills match, pick the most specific vulnerability class after recon. If no skill matches but a domain is provided, start with `recon`. If scope is unclear, ask for authorization before intrusive testing.
 
