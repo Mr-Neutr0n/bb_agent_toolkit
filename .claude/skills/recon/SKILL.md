@@ -22,6 +22,7 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 | Workflow | Purpose | Script paths | Primary outputs | Evidence |
 | --- | --- | --- | --- | --- |
 | `passive-subdomains` | Enumerate passive subdomains for a target domain. | `.claude/skills/recon/scripts/subdomain_enum.py` | `$OUTDIR/recon/subdomains/subs.txt`<br>`$OUTDIR/recon/subdomains/findings.jsonl` | `$OUTDIR/recon/subdomains/evidence/` |
+| `ct-index-enum` | Fast CT-index enumeration (crt.name) with first-seen dates; set `CT_NEW_DAYS=N` to also emit newly observed assets to `new_assets.txt`. Sub-second responses vs crt.sh's frequent 502s. Free tier: 1000 req/day/IP. | `.claude/skills/recon/scripts/ct_index_enum.py` | `$OUTDIR/recon/ctindex/subs_ctindex.txt`<br>`$OUTDIR/recon/ctindex/new_assets.txt` (with CT_NEW_DAYS) | `$OUTDIR/recon/ctindex/evidence/` |
 | `live-discovery` | Probe enumerated subdomains for live HTTP services. | `.claude/skills/recon/scripts/live_discovery.py` | `$OUTDIR/recon/live/live_hosts.txt`<br>`$OUTDIR/recon/live/live_full.csv`<br>`$OUTDIR/recon/live/findings.jsonl` | `$OUTDIR/recon/live/evidence/` |
 | `js-recon` | Extract JavaScript URLs, download bundles, and scan for endpoints or secrets. | `.claude/skills/recon/scripts/js_recon.py` | `$OUTDIR/recon/js/js_files.txt`<br>`$OUTDIR/recon/js/js_secrets.txt`<br>`$OUTDIR/recon/js/js_endpoints.txt`<br>`$OUTDIR/recon/js/findings.jsonl` | `$OUTDIR/recon/js/evidence/` |
 

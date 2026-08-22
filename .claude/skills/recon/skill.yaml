@@ -56,6 +56,29 @@ workflows:
       if_findings: live-discovery
       if_no_findings: live-discovery
 
+  ct-index-enum:
+    description: Fast CT-index enumeration via crt.name with first-seen dates; flags newly observed assets for delta tracking.
+    inputs: [TARGET, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/recon/ctindex && \
+      python3 .claude/skills/recon/scripts/ct_index_enum.py --target $TARGET --context $OUTDIR/recon/ctindex --new-days ${CT_NEW_DAYS:-0}
+    outputs:
+      - $OUTDIR/recon/ctindex/subs_ctindex.txt
+      - $OUTDIR/recon/ctindex/findings.jsonl
+      - kind: asset
+        path: $OUTDIR/recon/ctindex/subs_ctindex.txt
+    evidence_dir: $OUTDIR/recon/ctindex/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "CT firehose index returns subdomains in sub-second responses"
+      - "first-seen dates enable new-asset detection between engagements"
+    false_positives:
+      - "Wildcard or parked names remain indexed forever (index never deletes)"
+      - "Free tier is 1000 requests per IP per day; 429 falls back gracefully"
+    next:
+      if_findings: live-discovery
+      if_no_findings: live-discovery
+
   live-discovery:
     description: Probe enumerated subdomains for live HTTP services.
     inputs: [OUTDIR]
