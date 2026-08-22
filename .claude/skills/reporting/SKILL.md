@@ -24,6 +24,15 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 | `generate-single` | Generate a single finding report from evidence | `.claude/skills/reporting/scripts/report_generator.py` | `$OUTDIR/reports/report.md` | `$OUTDIR/reports/evidence/` |
 | `cvss-score` | Calculate CVSS v3.1 score for a finding | `.claude/skills/reporting/scripts/cvss_calc.py` | `$OUTDIR/reports/cvss.json` | `$OUTDIR/reports/evidence/` |
 | `batch-generate` | Generate reports from nuclei/skill JSONL output | `.claude/skills/reporting/scripts/batch_reporter.py` | `$OUTDIR/reports/summary.md`<br>`$OUTDIR/reports/findings/` | `$OUTDIR/reports/evidence/` |
+| `platform-export` | Render platform-specific report (HackerOne, Bugcrowd, generic) | `.claude/skills/reporting/scripts/platform_templates.py` | `$OUTDIR/reports/report_<platform>.md` | `$OUTDIR/reports/evidence/` |
+| `quality-check` | Gate report for submission readiness (sections, placeholders, secret leaks, evidence) | `.claude/skills/reporting/scripts/quality_gate.py` | `$OUTDIR/reports/quality_report.json` | `$OUTDIR/reports/evidence/` |
+| `estimate-bounty` | Estimate bounty range from severity, vuln class, program tier | `.claude/skills/reporting/scripts/bounty_estimator.py` | `$OUTDIR/reports/bounty_estimate.json` | `$OUTDIR/reports/evidence/` |
+
+## Workflow Selection
+- Standard chain: `generate-single` → `cvss-score` → `platform-export` → `quality-check` → `estimate-bounty`.
+- Never submit a report that failed `quality-check` with errors; warnings are advisory.
+- Set `PLATFORM=hackerone|bugcrowd|generic`, `PROGRAM_TIER=top|established|standard|small|vdp`,
+  and optionally `SEVERITY`, `VULN_TYPE`, `IMPACT_CLASS` in the RunContext before running.
 
 ## Evidence Required
 - Save raw request and response data for each confirmed finding.
@@ -34,6 +43,18 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 - `cvss`: CVSS vector string and breakdown
 - `report`: Markdown report with all required sections
 - `evidence_package`: Tar.gz with evidence + reports
+- `quality_gate`: Checklist results with errors, warnings, and pass verdict
+- `bounty_estimate`: Estimated USD range with inputs and disclaimer
+
+## Quality Gate Rules
+The `quality-check` workflow blocks submission on: missing summary/steps/PoC/impact sections,
+placeholder text (TODO/TBD/[insert ...]), or leaked secret patterns (live keys, tokens,
+private key blocks). Warnings flag thin sections, missing CVSS, and absent screenshots.
+
+## Bounty Estimation Disclaimer
+`estimate-bounty` output is a heuristic range from published program-table patterns.
+Actual payouts are decided by each program. Use it to prioritize which finding to
+report first, never as a promise.
 
 ## References
 - Source of truth: `skill.yaml`

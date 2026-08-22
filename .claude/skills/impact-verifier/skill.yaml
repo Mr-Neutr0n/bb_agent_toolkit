@@ -141,9 +141,54 @@ workflows:
       - "findings scored 80+ are submission-ready"
       - "findings below 60 need more evidence"
     next:
+      if_findings: cvss4-score
+      if_no_findings: cvss4-score
+
+  cvss4-score:
+    description: Calculate CVSS v4.0 score and severity from a vector string.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/impact-verifier && \
+      python3 .claude/skills/impact-verifier/scripts/cvss40_calc.py \
+        --vector "${CVSS4_VECTOR:?Set CVSS4_VECTOR, e.g. CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H}" \
+        --output $OUTDIR/impact-verifier/cvss4.json
+    outputs:
+      - $OUTDIR/impact-verifier/cvss4.json
+    evidence_dir: $OUTDIR/impact-verifier/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "CVSS 4.0 macrovector derived and severity classified"
+    false_positives:
+      - "numeric score is interpolated within official band; FIRST calculator is authoritative"
+    next:
+      if_findings: impact-narrative
+      if_no_findings: impact-narrative
+
+  impact-narrative:
+    description: Generate structured impact narrative with attack scenario and PII detection.
+    inputs: [OUTDIR, FINDING_DIR]
+    command: |
+      mkdir -p $OUTDIR/impact-verifier && \
+      python3 .claude/skills/impact-verifier/scripts/impact_narrative.py generate \
+        --finding-dir "${FINDING_DIR:?Set FINDING_DIR}" \
+        --impact-class "${IMPACT_CLASS:?Set IMPACT_CLASS, e.g. account_takeover}" \
+        --target-url "${TARGET_URL:-}" \
+        --output $OUTDIR/impact-verifier/impact.md
+    outputs:
+      - $OUTDIR/impact-verifier/impact.md
+    evidence_dir: $OUTDIR/impact-verifier/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "impact narrative generated with attack scenario walkthrough"
+      - "PII fields detected in response evidence elevate impact"
+    false_positives:
+      - "narrative templates are starting points; verify against actual target behavior"
+    next:
       if_findings: null
       if_no_findings: null
 
 evidence_templates:
   verified_finding: "Confirmed impact with classification, evidence manifest, false-positive checks"
   readiness_report: "Scored findings with evidence gaps and fix recommendations"
+  cvss4_score: "CVSS 4.0 vector, metrics breakdown, macrovector, severity class"
+  impact_narrative: "Impact text, attack scenario, observed data classes, CVSS hints"

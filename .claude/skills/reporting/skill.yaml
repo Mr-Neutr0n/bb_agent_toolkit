@@ -1,5 +1,5 @@
 name: reporting
-version: 2.0.0
+version: 2.1.0
 description: Bug bounty report generation, CVSS scoring, evidence packaging, platform-specific exports
 bounded_context: FindingContext
 safety_tier: passive
@@ -76,6 +76,48 @@ workflows:
     detection_signals: []
     false_positives: []
     next:
+      if_findings: quality-check
+      if_no_findings: quality-check
+
+  quality-check:
+    description: Gate a report for submission readiness (sections, placeholders, secrets, evidence)
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT, FINDING_DIR]
+    command: |
+      python3 .claude/skills/reporting/scripts/quality_gate.py check --report "${REPORT_FILE:-$OUTDIR/reports/report_hackerone.md}" --finding-dir "${FINDING_DIR:-$EVIDENCE_DIR}" --json > $OUTDIR/reports/quality_report.json; \
+      python3 .claude/skills/reporting/scripts/quality_gate.py check --report "${REPORT_FILE:-$OUTDIR/reports/report_hackerone.md}" --finding-dir "${FINDING_DIR:-$EVIDENCE_DIR}"
+    outputs:
+      - $OUTDIR/reports/quality_report.json
+    evidence_dir: $OUTDIR/reports/evidence/
+    detection_signals:
+      - "quality gate passed with zero errors"
+    false_positives:
+      - "warnings are advisory; only errors block submission"
+    next:
+      if_findings: estimate-bounty
+      if_no_findings: estimate-bounty
+
+  estimate-bounty:
+    description: Estimate bounty range from severity, vulnerability class, and program tier
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/reports && \
+      python3 .claude/skills/reporting/scripts/bounty_estimator.py estimate \
+        --severity ${SEVERITY:-high} \
+        --vuln-type "${VULN_TYPE:-}" \
+        --impact-class "${IMPACT_CLASS:-}" \
+        --program-tier ${PROGRAM_TIER:-standard} \
+        --platform ${PLATFORM:-hackerone} \
+        > $OUTDIR/reports/bounty_estimate.json
+    outputs:
+      - $OUTDIR/reports/bounty_estimate.json
+    evidence_dir: $OUTDIR/reports/evidence/
+    detection_signals:
+      - "bounty range estimated from severity and class multipliers"
+    false_positives:
+      - "estimates are heuristic; program tables decide actual payouts"
+    next:
       if_findings: null
       if_no_findings: null
 
@@ -83,3 +125,5 @@ evidence_templates:
   cvss: "CVSS vector string and breakdown"
   report: "Markdown report with all required sections"
   evidence_package: "Tar.gz with evidence + reports"
+  quality_gate: "Checklist results with errors, warnings, and pass verdict"
+  bounty_estimate: "Estimated USD range with inputs and disclaimer"

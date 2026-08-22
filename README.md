@@ -163,6 +163,11 @@ bin/bb-run campaign status
 | 37 | `vuln-intel` | CVE tracking, disclosed report hunting, PoC discovery, and security news aggregation |
 | 38 | `scope-manager` | Scope definition, validation, versioning, and guardrails |
 | 39 | `campaign` | Autonomous end-to-end hunt: recon, model, plan, execute, report |
+| 40 | `cicd-security` | CI/CD pipeline hunting: workflow injection, runner poisoning, OIDC theft. |
+| 41 | `graphql-audit` | GraphQL security: introspection, batching abuse, IDOR via aliasing, depth bombs. |
+| 42 | `web3-audit` | Smart contract audit: DeFi bug classes, Foundry PoC, kill signals. |
+| 43 | `meme-coin-audit` | Token rug-pull detection, Solana SPL risks, DEX liquidity attacks. |
+| 44 | `triage-validation` | Pre-report validation gate: 7-question gate and submission checklists. |
 
 Grouped by area:
 

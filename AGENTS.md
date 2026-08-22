@@ -44,8 +44,8 @@ Commands:
 - `bin/bb-tools lock` — write `.bb/tool-lock.json`
 - `bin/bb-tools verify` — verify lock against installed versions
 
-`bb-validate` checks that the tool registry is populated and warns about missing tools.
-`bb-run` warns when a selected workflow needs a tool that is not on PATH.
+`bb-validate` now checks that the tool registry is populated and warns about missing tools.
+`bb-run` now warns when a workflow needs a tool that is not on PATH.
 
 ## Environment
 
@@ -77,6 +77,12 @@ Common variables:
 | `USER_AGENT` | Security research user agent. |
 
 Workflow-specific variables are allowed, but `skill.yaml` should provide safe defaults where practical. Examples: `QUERY`, `PLAN`, `PLAN_OUTPUT`, `DOMAIN_PROFILE`, `COVERAGE_MATRIX`, `ARCHETYPES_FILE`, `SURFACES_FILE`.
+
+## Workflow Tracing
+
+Every `bin/bb-run` execution creates a local redacted trace record under `.bb/traces/runs.jsonl`.
+Traces include timing, safety tier, exit code, tool versions, and artifact references —
+but never raw credentials, cookies, tokens, or target responses.
 
 ## Default Workflow
 
@@ -208,7 +214,6 @@ Always prefer `bin/bb-run <skill> <workflow>` after context is initialized. If y
 | Import new public research | `auto-research` |
 | Measure skill precision/recall/F1 | `evaluation-harness` |
 | Propose new skill experiments | `skill-scientist` |
-
 | Authenticated testing, multi-account, session management | `persona` then `cross-account` |
 | Import traffic, build replay corpus | `traffic-corpus` |
 | Asset relationship graph, hotlists, delta analysis | `asset-graph` |
