@@ -4,13 +4,28 @@
 
 ```bash
 make test      # YAML parse + Python compile checks
+make lint      # ruff (python) + shellcheck (bash)
 make validate  # Run skill quality validator
 make secrets   # GitLeaks secret scan
 make audit     # Workflow + security audit
 ```
 
-All PRs must pass `make test`, `make validate`, `make secrets`, and
-`make audit` before merge.
+All PRs must pass `make test`, `make lint`, `make validate`, `make secrets`,
+and `make audit` before merge. CI enforces the same gates plus the release
+audit (`validate_skills.py audit-release`).
+
+## Ground Rules
+
+1. **Never include real target data.** No cookies, tokens, request/response
+   bodies from live programs, or PII in commits, issues, or PRs. Evidence from
+   live targets stays local (gitignored).
+2. **Safety tier is not optional.** Every workflow declares a tier; intrusive
+   workflows state their explicit gate; destructive-manual is never automated.
+3. **Detection-only by default.** Probes that could affect third parties
+   (cache poisoning, desync confirmation) must use unique per-run canaries and
+   document their blast radius in the script docstring.
+4. **The validator is the contract.** New skills must pass
+   `tools/validate_skills.py audit-skill <name>` before review.
 
 ## Adding a New Skill
 

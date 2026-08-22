@@ -24,6 +24,24 @@ Modern bug bounty work is not one scanner. It is a loop:
 
 BountyHarness packages that loop into reusable, inspectable workflows so an agent does not need to invent a new pipeline every time.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A[bin/bb-init<br/>RunContext] --> B[bin/bb-validate]
+    B --> C[bin/bb-run<br/>workflow executor]
+    C --> D[(45 skill packages)]
+    B --> E[bin/bb-hunt<br/>autonomous campaign]
+    E --> C
+    C --> F[.bb/traces<br/>circuit breaker]
+    C --> G[evidence + reports]
+    H[(tools/registry<br/>99 tools)] --> C
+```
+
+- **Thin harness** (`bin/`): context init, validation, workflow execution, autonomous campaigns. No security logic lives here.
+- **Fat skills** (`.claude/skills/<skill>/`): `SKILL.md` router, machine-executable `skill.yaml`, scripts, runbooks, payloads.
+- **Governance layer**: safety tiers, circuit breaker, scope guardrails, tracing, secret scanning in CI.
+
 ## Quick Start
 
 ```bash
