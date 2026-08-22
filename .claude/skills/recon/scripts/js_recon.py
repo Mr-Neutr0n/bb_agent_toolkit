@@ -12,10 +12,9 @@ import os
 import re
 import subprocess
 import sys
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 
 try:
     import requests
@@ -25,10 +24,10 @@ except ImportError:
 try:
     from urllib.parse import urljoin, urlparse
 except ImportError:
-    from urlparse import urljoin, urlparse
+    from urlparse import urlparse
 
 
-def which(cmd: str) -> Optional[str]:
+def which(cmd: str) -> str | None:
     for p in os.environ.get("PATH", "").split(os.pathsep):
         candidate = os.path.join(p, cmd)
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
@@ -41,7 +40,7 @@ def cmd_exists(name: str) -> bool:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def log(msg: str) -> None:
@@ -212,6 +211,35 @@ Outputs (in --context dir):
     return p
 
 
+def katana_supports_knowledge_base() -> bool:
+    """katana v1.7.0+ ships -kb-secrets/-kb-endpoints extractors."""
+    try:
+        p = subprocess.run(["katana", "-version"], capture_output=True, text=True, timeout=8)
+        m = re.search(r"(\d+)\.(\d+)\.(\d+)", p.stdout + p.stderr)
+        if not m:
+            return False
+        major, minor, patch = map(int, m.groups())
+        return (major, minor) > (1, 7) or ((major, minor) == (1, 7) and True)
+    except Exception:
+        return False
+
+
+def harvest_knowledge_base(crawl_out: Path, crawls_dir: Path) -> int:
+    """Split katana knowledge-base events (secrets/endpoints) out of the crawl
+    stream into their own triage file. Unknown line formats are left alone."""
+    if not crawl_out.exists():
+        return 0
+    kb_lines = []
+    for line in crawl_out.read_text(encoding="utf-8", errors="replace").splitlines():
+        low = line.lower()
+        if ('"secret"' in low or '"endpoint"' in low or "knowledge" in low) and line.strip().startswith("{"):
+            kb_lines.append(line)
+    if kb_lines:
+        kb_path = crawls_dir / "katana_kb_events.jsonl"
+        kb_path.write_text("\n".join(kb_lines) + "\n", encoding="utf-8")
+    return len(kb_lines)
+
+
 def run_crawler(hosts_file: Path, crawl_out: Path, dry: bool, target_url: str = "", rate_limit: int = 50, concurrency: int = 10) -> None:
     if not cmd_exists("katana"):
         log("katana not installed; skipping crawl")
@@ -224,10 +252,13 @@ def run_crawler(hosts_file: Path, crawl_out: Path, dry: bool, target_url: str = 
     if not target_url:
         log("No target URL to crawl")
         return
+    cmd = ["katana", "-u", target_url, "-jc", "-d", "3", "-rl", str(rate_limit), "-c", str(concurrency), "-silent"]
+    if katana_supports_knowledge_base():
+        cmd += ["-kb-secrets", "-kb-endpoints"]
+        log("katana knowledge-base extractors enabled (secrets + endpoints)")
+    cmd += ["-o", str(crawl_out)]
     log(f"Crawling {target_url} with katana (rate={rate_limit}/s, concurrency={concurrency})...")
-    rc, out, err = run(
-        ["katana", "-u", target_url, "-jc", "-d", "3", "-rl", str(rate_limit), "-c", str(concurrency), "-silent", "-o", str(crawl_out)],
-        timeout=600, dry_run=dry)
+    rc, out, err = run(cmd, timeout=600, dry_run=dry)
     if rc != 0 and not dry:
         log(f"katana crawl warning: {err.strip() or 'exit ' + str(rc)}")
 
@@ -236,6 +267,9 @@ def crawl_and_extract(hosts_file: Path, crawls_dir: Path, dry: bool, target_url:
     crawl_out = crawls_dir / "katana_crawl.txt"
     if not crawl_out.exists() or os.path.getsize(str(crawl_out)) == 0:
         run_crawler(hosts_file, crawl_out, dry, target_url=target_url, rate_limit=rate_limit, concurrency=concurrency)
+    kb_count = harvest_knowledge_base(crawl_out, crawls_dir)
+    if kb_count:
+        log(f"katana knowledge-base events captured: {kb_count} -> {crawls_dir / 'katana_kb_events.jsonl'}")
     js_urls: list[str] = []
     if crawl_out.exists():
         js_urls = extract_js_urls(crawl_out)
@@ -276,7 +310,7 @@ def main() -> None:
     ctx.mkdir(parents=True, exist_ok=True)
     dry = args.dry_run
 
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     start_ts = now_iso()
     log(f"URLs file: {live_file}  Context: {ctx}  Rate limit: {args.rate_limit}/s  Concurrency: {args.concurrency}  Dry: {dry}")
 
