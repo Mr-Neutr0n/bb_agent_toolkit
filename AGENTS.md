@@ -14,7 +14,7 @@ The harness is deliberately small:
 |---|---|
 | `bin/bb-init` | Creates `.bb/context.env` and `.bb/context.json`. |
 | `bin/bb-validate` | Checks context and scope file presence. |
-| `bin/bb-run` | Runs one command from `.claude/skills/<skill>/skill.yaml`. |
+| `bin/bb-run` | Runs one command from `.claude/skills/<skill>/skill.yaml`. Traces every run; circuit-breaker blocks a target after repeated consecutive failures (`tools/circuit_breaker.py reset` clears). |
 | `bin/bb-hunt` | Autonomous campaign: bootstraps context from a URL, then runs recon → plan → execute → report unattended (thin wrapper over the `campaign` skill). |
 | `bin/bb-tools` | Install, update, verify, and lock external tools. |
 | `tools/validate_skills.py` | Scores skill package quality. |

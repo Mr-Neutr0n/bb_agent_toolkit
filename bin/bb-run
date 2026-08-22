@@ -108,6 +108,11 @@ WF_CMD="${WF_CMD//\$TARGET/$TARGET}"
 
 STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 TARGET_HASH=$(echo -n "${TARGET:-}" | shasum -a 256 | cut -d' ' -f1)
+
+# Circuit breaker: refuse to run when target is in cooldown (consecutive
+# failures or explicit rate-limit flag). Exit 2 = blocked, not a workflow error.
+python3 tools/circuit_breaker.py check --target-hash "$TARGET_HASH" || exit 2
+
 SCOPE_HASH=""
 if [ -n "${SCOPE_FILE:-}" ] && [ -f "$SCOPE_FILE" ]; then
   SCOPE_HASH=$(shasum -a 256 "$SCOPE_FILE" | cut -d' ' -f1)
