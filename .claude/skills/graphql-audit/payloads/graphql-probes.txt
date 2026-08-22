@@ -1,0 +1,8 @@
+{ "__schema { queryType { name } }" }
+{ "query": "query {\n  __schema\n  { queryType { name } } }" }
+{ "query": "fragment f on __Schema { queryType { name } } { ...f }" }
+{ "query": "{ __type(name: \"User\") { fields { name } } }" }
+[{"query":"{ __typename }"}] x100
+q{i}: user(id: {i}) { id email role }
+{ "query": "{ users(search: \"admin'--\") { id email } }" }
+{ "query": "{ login(username: {\"$gt\": \"\"}, password: {\"$gt\": \"\"}) { token } }" }

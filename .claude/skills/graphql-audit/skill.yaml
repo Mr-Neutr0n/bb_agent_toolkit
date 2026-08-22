@@ -1,0 +1,126 @@
+name: graphql-audit
+version: 1.0.0
+description: GraphQL security hunting — introspection, field suggestions, batching DoS, IDOR via aliasing, injection, engine fingerprinting, WAF bypass
+bounded_context: ApplicationSecurityContext
+safety_tier: active-safe
+owasp_wstg:
+  - WSTG-GRAPH-01
+  - WSTG-GRAPH-02
+  - WSTG-GRAPH-03
+  - WSTG-GRAPH-04
+owasp_api_top10:
+  - API1
+  - API3
+  - API4
+severity_range: [low, medium, high, critical]
+tools_required:
+  - python3
+  - curl
+  - jq
+  - clairvoyance
+  - graphw00f
+  - graphql-cop
+rate_limit: 20
+input_files:
+  - live_hosts.txt
+workflows:
+  introspection:
+    description: Probe __schema plus bypass variants and extract interesting schema names
+    safety_tier: active-safe
+    inputs: [GRAPHQL_ENDPOINT, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/graphql && \
+      python3 .claude/skills/graphql-audit/scripts/gql_introspection.py --endpoint "${GRAPHQL_ENDPOINT:?Set GRAPHQL_ENDPOINT}" ${AUTH_HEADER:+--header "$AUTH_HEADER"} > $OUTDIR/graphql/introspection.txt
+    outputs:
+      - $OUTDIR/graphql/introspection.txt
+    evidence_dir: $OUTDIR/graphql/evidence/
+    detection_signals:
+      - "introspection query returns __schema data"
+      - "bypass variant (GET, fragment, __type) returns schema data"
+    false_positives:
+      - "schema data is public by design on some APIs"
+    next:
+      if_findings: field-suggestions
+      if_no_findings: field-suggestions
+
+  field-suggestions:
+    description: Recover schema via clairvoyance when introspection is disabled
+    safety_tier: active-safe
+    inputs: [GRAPHQL_ENDPOINT, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/graphql && \
+      (python3 -m clairvoyance -u "${GRAPHQL_ENDPOINT:?Set GRAPHQL_ENDPOINT}" -o $OUTDIR/graphql/field_suggestions.json 2>/dev/null || bash .claude/skills/graphql-audit/scripts/graphql_audit.sh "$GRAPHQL_ENDPOINT" --output-dir $OUTDIR/graphql)
+    outputs:
+      - $OUTDIR/graphql/field_suggestions.json
+    evidence_dir: $OUTDIR/graphql/evidence/
+    detection_signals:
+      - "clairvoyance recovers type and field names"
+      - "typo probes return 'did you mean' suggestions"
+    false_positives:
+      - "suggestions are generic engine defaults"
+    next:
+      if_findings: batching-dos
+      if_no_findings: batching-dos
+
+  batching-dos:
+    description: Measure array batching and alias bomb acceptance and timing
+    safety_tier: active-safe
+    inputs: [GRAPHQL_ENDPOINT, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/graphql && \
+      python3 .claude/skills/graphql-audit/scripts/gql_batch_probe.py --endpoint "${GRAPHQL_ENDPOINT:?Set GRAPHQL_ENDPOINT}" > $OUTDIR/graphql/batching_dos.txt
+    outputs:
+      - $OUTDIR/graphql/batching_dos.txt
+    evidence_dir: $OUTDIR/graphql/evidence/
+    detection_signals:
+      - "batch of N queries returns data in one HTTP round trip"
+      - "alias bomb accepted with linear response time"
+    false_positives:
+      - "small batches are within normal server limits"
+    next:
+      if_findings: idor-aliasing
+      if_no_findings: idor-aliasing
+
+  idor-aliasing:
+    description: Enumerate object IDs via aliases and test cross-account access
+    safety_tier: active-safe
+    inputs: [GRAPHQL_ENDPOINT, OUTDIR, AUTH_HEADER]
+    command: |
+      mkdir -p $OUTDIR/graphql && \
+      python3 .claude/skills/graphql-audit/scripts/gql_idor_aliasing.py --endpoint "${GRAPHQL_ENDPOINT:?Set GRAPHQL_ENDPOINT}" --field ${GQL_IDOR_FIELD:-user} --start-id ${GQL_IDOR_START:-1} --count ${GQL_IDOR_COUNT:-50} ${AUTH_HEADER:+--header "$AUTH_HEADER"} > $OUTDIR/graphql/idor_aliasing.txt
+    outputs:
+      - $OUTDIR/graphql/idor_aliasing.txt
+    evidence_dir: $OUTDIR/graphql/evidence/
+    detection_signals:
+      - "foreign object IDs return data under session A"
+      - "privileged fields (role, internalNote) readable on own objects"
+    false_positives:
+      - "public profile data may be intentionally readable"
+    next:
+      if_findings: injection
+      if_no_findings: injection
+
+  injection:
+    description: SQLi/NoSQLi probes through resolver string arguments via the full sweep
+    safety_tier: active-safe
+    inputs: [GRAPHQL_ENDPOINT, OUTDIR, AUTH_HEADER]
+    command: |
+      mkdir -p $OUTDIR/graphql && \
+      bash .claude/skills/graphql-audit/scripts/graphql_audit.sh "${GRAPHQL_ENDPOINT:?Set GRAPHQL_ENDPOINT}" ${AUTH_HEADER:+--header "$AUTH_HEADER"} --output-dir $OUTDIR/graphql
+    outputs:
+      - $OUTDIR/graphql/gqlmap.txt
+      - $OUTDIR/graphql/summary.txt
+    evidence_dir: $OUTDIR/graphql/evidence/
+    detection_signals:
+      - "DB error signatures in response to crafted arguments"
+      - "gqlmap reports injectable parameters"
+    false_positives:
+      - "error messages are cosmetic and not from a real DB"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  introspection_schema: "Full schema dump with interesting type/field names"
+  batching_timing: "Response time delta for 1 vs N queries with status codes"
+  idor_aliasing: "Alias-batched object responses showing foreign-ID data"

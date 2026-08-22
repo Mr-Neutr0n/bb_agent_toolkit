@@ -1,0 +1,6 @@
+grep -rn "function mint\|_mint(" src/ --include="*.sol"
+grep -rn "blacklist\|isBlacklisted\|maxTxAmount\|tradingEnabled" src/ --include="*.sol"
+grep -rn "setFee\|setSellFee\|_taxFee\|_sellFee" src/ --include="*.sol"
+grep -rn "migrateLP\|emergencyWithdraw\|\.sync()\|setRouter" src/ --include="*.sol"
+grep -rn "renounceOwnership.*override\|_shadowAdmin\|selfdestruct" src/ --include="*.sol"
+grep -rn "MintTo\|mint_authority\|freeze_authority\|transfer_hook\|permanent_delegate" src/ --include="*.rs"

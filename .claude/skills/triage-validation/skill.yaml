@@ -1,0 +1,58 @@
+name: triage-validation
+version: 1.0.0
+description: Finding validation before writing any report — 7-Question Gate, 4 pre-submission gates, never-submit list, conditionally-valid chain table, CVSS 3.1 quick reference
+bounded_context: FindingContext
+safety_tier: passive
+owasp_wstg:
+  - WSTG-INFO-06
+  - WSTG-ATHN-01
+  - WSTG-ATHN-02
+owasp_api_top10:
+  - API1
+  - API4
+severity_range: [info, low, medium, high, critical]
+tools_required:
+  - python3
+  - date
+input_files:
+  - findings.jsonl
+workflows:
+  run-gate:
+    description: Run the 7-Question Gate and 4 pre-submission gates on a candidate finding
+    safety_tier: passive
+    inputs: [FINDING_DIR, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/triage && \
+      python3 .claude/skills/triage-validation/scripts/triage_gate.py --finding-dir "${FINDING_DIR:?Set FINDING_DIR}" --output $OUTDIR/triage/gate_result.md
+    outputs:
+      - $OUTDIR/triage/gate_result.md
+    evidence_dir: $OUTDIR/triage/evidence/
+    detection_signals:
+      - "gate report shows all 7 questions answered and 4 gates passed"
+    false_positives:
+      - "self-assessment only — the gate is a filter, not a guarantee of validity"
+    next:
+      if_findings: check-never-submit
+      if_no_findings: check-never-submit
+
+  check-never-submit:
+    description: Match a finding description against the never-submit list and N/A kill signals
+    safety_tier: passive
+    inputs: [FINDING_DIR, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/triage && \
+      python3 .claude/skills/triage-validation/scripts/never_submit_check.py --finding-dir "${FINDING_DIR:?Set FINDING_DIR}" --output $OUTDIR/triage/never_submit.md
+    outputs:
+      - $OUTDIR/triage/never_submit.md
+    evidence_dir: $OUTDIR/triage/evidence/
+    detection_signals:
+      - "finding description matches one or more never-submit rules"
+    false_positives:
+      - "keyword overlap without the underlying behavior — always read the matched rule"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  gate_result: "Gate-by-gate pass/fail checklist with identity answers"
+  never_submit_verdict: "Never-submit rule matches and kill decision for the finding"

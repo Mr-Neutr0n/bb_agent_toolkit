@@ -1,0 +1,30 @@
+function startUnstake(uint256 amount) external {
+    totalSupply -= amount;
+}
+function claimRedemption(uint256 tokenId) external {
+    if (transmuter.balance >= amount) {
+        transmuter.transfer(user, amount);
+        _burn(tokenId);
+        return;
+    }
+}
+function vote(uint256 tokenId) external onlyNewEpoch(tokenId) {}
+function poke(uint256 tokenId) external {}
+function split(uint256 tokenId, uint256 amount) external {
+    _requireOwned(tokenId);
+    _burn(tokenId);
+    _mint(msg.sender, amount);
+}
+modifier onlyAdmin() {
+    if (msg.sender == admin) { _; }
+}
+function initialize(address _owner) public {
+    owner = _owner;
+}
+(, int256 price,,,) = priceFeed.latestRoundData();
+function withdraw(uint256 amount) external {
+    require(balances[msg.sender] >= amount);
+    (bool success,) = msg.sender.call{value: amount}("");
+    require(success);
+    balances[msg.sender] -= amount;
+}

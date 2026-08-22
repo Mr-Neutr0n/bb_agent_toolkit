@@ -1,0 +1,37 @@
+name: meme-coin-audit
+version: 1.0.0
+description: Meme coin and token security audit — rug pull detection, Solana SPL authority analysis, Token-2022 extension risks, DEX LP attacks. Static review is passive; on-chain interaction is intrusive.
+bounded_context: TokenSecurityContext
+safety_tier: passive
+owasp_wstg: []
+owasp_api_top10: []
+severity_range: [low, medium, high, critical]
+tools_required:
+  - python3
+  - date
+rate_limit: 10
+input_files: []
+workflows:
+  token-scan:
+    description: Token red-flag scanner for EVM and Solana token sources (static, local files only)
+    safety_tier: passive
+    inputs: [CONTRACTS_DIR, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/web3 && \
+      python3 .claude/skills/meme-coin-audit/scripts/token_scanner.py "${CONTRACTS_DIR:?Set CONTRACTS_DIR}" --recursive > $OUTDIR/web3/token_scan.txt
+    outputs:
+      - $OUTDIR/web3/token_scan.txt
+    evidence_dir: $OUTDIR/web3/evidence/
+    detection_signals:
+      - "hidden mint, honeypot restrictions, unbounded fee setters, LP drain functions"
+      - "Solana mint/freeze authority and Token-2022 dangerous extensions"
+    false_positives:
+      - "regex scanner cannot confirm on-chain authority state — verify manually"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  token_scan: "Token scanner report with matched rule per finding"
+  onchain_state: "On-chain authority/LP/holder state (intrusive manual check)"
+  exploit_poc: "Foundry token-exploit PoC (honeypot, hidden mint, fee rug)"

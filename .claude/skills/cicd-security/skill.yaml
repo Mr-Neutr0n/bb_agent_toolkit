@@ -1,0 +1,41 @@
+name: cicd-security
+version: 1.0.0
+description: CI/CD pipeline security hunting — GitHub Actions injection, secret exfiltration, self-hosted runner poisoning, dependency confusion, OIDC token theft
+bounded_context: SupplyChainContext
+safety_tier: passive
+owasp_wstg:
+  - WSTG-CONF-01
+  - WSTG-CONF-07
+owasp_api_top10: []
+severity_range: [low, medium, high, critical]
+tools_required:
+  - python3
+  - bash
+  - curl
+  - gitleaks
+rate_limit: 20
+input_files: []
+workflows:
+  scan-workflows:
+    description: Scan GitHub Actions workflows of a repo or org for security issues
+    safety_tier: passive
+    inputs: [REPO, OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/cicd && \
+      bash .claude/skills/cicd-security/scripts/cicd_scanner.sh "${REPO:?Set REPO (owner/repo)}" --output-dir $OUTDIR/cicd
+    outputs:
+      - $OUTDIR/cicd/scan_results.txt
+      - $OUTDIR/cicd/summary.txt
+    evidence_dir: $OUTDIR/cicd/evidence/
+    detection_signals:
+      - "sisakulint flags expression injection, unpinned actions, or pull_request_target misuse"
+      - "workflow files contain injectable context interpolation"
+    false_positives:
+      - "lint findings need manual confirmation of attacker-controllable input"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  workflow_finding: "Workflow path, line number, rule, and surrounding YAML"
+  injection_poc: "PR/issue title payload and the run: block it reaches"

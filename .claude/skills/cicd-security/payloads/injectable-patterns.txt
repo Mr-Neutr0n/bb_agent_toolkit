@@ -1,0 +1,12 @@
+- name: Print PR title
+  run: echo "Title: ${{ github.event.pull_request.title }}"
+- name: Print branch
+  run: echo "Branch: ${{ github.head_ref }}"
+- name: Show comment
+  run: echo "${{ github.event.comment.body }}"
+uses: actions/checkout@v3
+uses: owner/action@main
+ref: ${{ github.event.pull_request.head.sha }}
+runs-on: self-hosted
+permissions:
+  contents: write
