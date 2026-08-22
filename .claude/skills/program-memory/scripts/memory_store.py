@@ -14,7 +14,10 @@ from pathlib import Path
 
 VALID_CATEGORIES = [
     "program_fact", "tech_fact", "false_positive", "accepted_finding",
-    "credential_note", "rate_limit_note", "scope_note", "decision", "correction"
+    "credential_note", "rate_limit_note", "scope_note", "decision", "correction",
+    # Negative results: endpoints/flows tested and found NOT vulnerable.
+    # Prevents re-testing across waves; write expires_at so stale-clean facts decay.
+    "tested_clean"
 ]
 VALID_CONFIDENCE = ["low", "medium", "high"]
 VALID_SENSITIVITY = ["program-private", "report-safe", "high-sensitivity"]

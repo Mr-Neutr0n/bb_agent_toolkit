@@ -6,3 +6,8 @@ rate_limiting
 cdn_presence
 common_false_positives
 out_of_scope_pattern
+
+Negative results (category: tested_clean):
+tested_clean_endpoint     # probed, confirmed not vulnerable; set expires_at
+tested_clean_flow         # full workflow verified clean (e.g. checkout race)
+failed_approach           # technique tried, did not work on this target + why
