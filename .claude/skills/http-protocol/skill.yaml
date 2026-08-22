@@ -193,6 +193,28 @@ workflows:
       if_findings: null
       if_no_findings: null
 
+  desync-matrix:
+    description: Detection sweep for post-2024 smuggling trigger classes - obfuscated Expect 0.CL, multipart/byteranges CL confusion, dangling-byte RQP confirmation
+    inputs: [TARGET_URL, OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/http-protocol/desync && \
+      python3 .claude/skills/http-protocol/scripts/desync_matrix.py --target $TARGET_URL --matrix ${DESYNC_MATRIX:-all} --output $OUTDIR/http-protocol/desync/desync_findings.jsonl
+    outputs:
+      - $OUTDIR/http-protocol/desync/desync_findings.jsonl
+    evidence_dir: $OUTDIR/http-protocol/desync/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "Dual responses on one connection after obfuscated Expect header"
+      - "Response parsed out of multipart/byteranges Content-Length confusion"
+      - "Follow-up request desyncs after dangling body byte (RQP candidate)"
+    false_positives:
+      - "Keep-alive pipelining artifacts from proxies"
+      - "First-response delay misread as desync (script marks ambiguous)"
+      - "100-continue normal flow mistaken for smuggling (filtered)"
+    next:
+      if_findings: verify
+      if_no_findings: null
+
 evidence_templates:
   smuggling_curl: "curl -v raw smuggling request/response pair"
   cache_header_dump: "curl -sD headers.txt showing cache hit with poisoned value"

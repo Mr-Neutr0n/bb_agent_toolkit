@@ -166,6 +166,29 @@ workflows:
       if_findings: data-extraction
       if_no_findings: data-extraction
 
+  mcp-audit:
+    description: MCP tool-definition integrity audit - rug-pull hash diffing, hidden-unicode description smuggling, anonymous listing, risky STDIO defaults
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/ai-llm/mcp .bb/mcp && \
+      python3 .claude/skills/ai-llm/scripts/mcp_audit.py snapshot --url "${MCP_URL:?Set MCP_URL}" --manifest .bb/mcp/baseline.json && \
+      python3 .claude/skills/ai-llm/scripts/mcp_audit.py audit --url "$MCP_URL" --output $OUTDIR/ai-llm/mcp/integrity_audit.json
+    outputs:
+      - $OUTDIR/ai-llm/mcp/integrity_audit.json
+    evidence_dir: $OUTDIR/ai-llm/mcp/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "tools/list succeeds anonymously on remote MCP server"
+      - "Hidden bidi/zero-width characters inside tool descriptions"
+      - "Instruction-override or credential-exfil text smuggled in descriptions"
+      - "Tool definition hashes changed between sessions (rug pull)"
+    false_positives:
+      - "Variation selectors from legitimate emoji rendering"
+      - "Intentional redeploys changing tool schemas between snapshots"
+    next:
+      if_findings: mcp-abuse
+      if_no_findings: null
+
   data-extraction:
     description: Extract system prompts, training data, PII from LLM
     inputs: [OUTDIR, CONTEXT]
