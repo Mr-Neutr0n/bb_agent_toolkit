@@ -1,0 +1,25 @@
+DOMPurify bypass classes (2025-2026 research wave)
+===================================================
+
+CVE-2026-49459 - DOM clobbering defeats DOMPurify's own _isClobbered check
+under IN_PLACE mode; a live event handler survives sanitization.
+- Fingerprint: DOMPurify versions < 2.5.8 / < 3.2.7 depending on branch
+- Probe shape: nested form/label id attributes colliding with internal
+  config keys (e.g. id="attributes" inside sanitized fragment)
+
+Prototype-pollution-to-DOMPurify gadget (CVE-2026-41238 lineage):
+- If app has a separate PP sink, pollute CUSTOM_ELEMENT_HANDLING or
+  ALLOWED_TAGS to re-enable dangerous elements at sanitize time.
+
+gmsgadget chains:
+- Gadget libraries loaded post-sanitization turn inert fragments into
+  execution sinks; enumerate script includes after sanitizer call sites.
+
+Version fingerprint helper (client-side):
+  Object.keys(window).filter(k=>k.toLowerCase().includes('purify'))
+  window.DOMPurify && DOMPurify.version
+
+Where these fit in the harness:
+1. xss skill: run sanitizer fingerprint during js-recon or surface mapping
+2. Feed detected version into vuln-intel search-cves --target dompurify
+3. Only then attempt payload delivery from this file

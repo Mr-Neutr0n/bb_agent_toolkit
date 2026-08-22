@@ -103,6 +103,26 @@ workflows:
       if_findings: null
       if_no_findings: null
 
+  batch-confusion:
+    description: Detect REST batch endpoints and probe for route confusion (wp2shell-class, CVE-2026-63030 lineage) with GET-only sub-requests.
+    inputs: [TARGET_URL, OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/api/batch && \
+      python3 .claude/skills/api/scripts/api_batch_confusion.py --target $TARGET_URL ${API_BATCH_PATH:+--batch-path $API_BATCH_PATH} --output $OUTDIR/api/batch/batch_findings.json
+    outputs:
+      - $OUTDIR/api/batch/batch_findings.json
+    evidence_dir: $OUTDIR/api/batch/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "Batch endpoint answers empty request list with 200/207 or validation errors"
+      - "Internal/admin-namespaced sub-route resolves inside batch context"
+    false_positives:
+      - "Route exists but auth is enforced identically inside and outside batch"
+      - "Framework returns generic 200 envelopes without dispatching"
+    next:
+      if_findings: bola-bfla
+      if_no_findings: null
+
 evidence_templates:
   mass_assignment: "Registration response showing elevated role assignment"
   bola_response: "API response containing another user's sensitive data"

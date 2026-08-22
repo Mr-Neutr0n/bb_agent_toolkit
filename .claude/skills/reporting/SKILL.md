@@ -56,6 +56,13 @@ private key blocks). Warnings flag thin sections, missing CVSS, and absent scree
 Actual payouts are decided by each program. Use it to prioritize which finding to
 report first, never as a promise.
 
+## Platform Policy Notes
+- **HackerOne identity verification (Aug 2026)**: H1 now requires completed
+  identity verification on the submitting account for bug bounty submissions;
+  API submissions without it are rejected. Any submission path in this toolkit
+  assumes a verified human account behind the persona - never attempt automated
+  account creation or IDV bypass.
+
 ## References
 - Source of truth: `skill.yaml`
 - Runbooks: `runbooks/`

@@ -1,0 +1,62 @@
+id: http-range-cache-poisoning
+name: Range Request Cache Poisoning
+category: http-protocol
+description: >
+  Web caches that key on URL but store partial (206) or malformed multipart
+  range responses as if they were full representations. A crafted Range header
+  (suffix ranges, impossible slices, attacker-named boundaries) contaminates a
+  cache entry later served to all clients requesting that URL. Documented at
+  scale by the HTTP Terminator research (Aug 2026) as a top-yield class on
+  CDN-fronted targets.
+severity: high
+standards:
+  wstg:
+    - WSTG-CONF-04
+  asvs:
+    - "V13.2.1"
+  cwe:
+    - CWE-444
+applies_to:
+  archetypes:
+    - cdn-fronted-web
+    - enterprise-api
+  surfaces:
+    - http-endpoint
+requires:
+  auth: none
+  inputs:
+    - target path served through a caching layer
+  tools:
+    - python3
+signals:
+  positive:
+    - Subsequent plain GET returns truncated/partial content after a Range probe
+    - Cache headers present (Age, X-Cache, CF-Cache-Status) and content changed
+    - Multipart/byteranges body stored where single response expected
+  negative:
+    - No caching layer on path (probe inconclusive, not negative)
+    - Cache correctly keys on Range header (Vary: Range honored)
+false_positives:
+  - Dynamic content changes between baseline and verification requests
+evidence_required:
+  - Three-request sequence with timestamps (baseline, poisoned, verify)
+  - Cache-identifying headers from each response
+safety:
+  tier: active-safe
+  rate_limited: true
+  data_modifying: false
+workflow_mapping:
+  skill: http-protocol
+  workflow: crlf-desync
+related_skills:
+  - cors-csrf
+payloads:
+  - name: suffix_range_probe
+    description: Malformed suffix range with canary boundary name
+    examples:
+      - "Range: bytes=0-0,<canary>-"
+tags:
+  - cache-poisoning
+  - range
+  - cdn
+  - web-cache

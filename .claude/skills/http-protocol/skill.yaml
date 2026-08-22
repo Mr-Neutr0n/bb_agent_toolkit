@@ -215,6 +215,28 @@ workflows:
       if_findings: verify
       if_no_findings: null
 
+  crlf-desync:
+    description: Detection sweeps for CRLF-powered classes - header-value injection to desync escalation, Range cache poisoning, status-line injection
+    inputs: [TARGET_URL, OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/http-protocol/crlf && \
+      python3 .claude/skills/http-protocol/scripts/crlf_desync.py --target $TARGET_URL --path ${PROBE_PATH:-/} --matrix ${CRLF_MATRIX:-all} --output $OUTDIR/http-protocol/crlf/crlf_findings.jsonl
+    outputs:
+      - $OUTDIR/http-protocol/crlf/crlf_findings.jsonl
+    evidence_dir: $OUTDIR/http-protocol/crlf/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "Injected canary header visible after %0d%0a in a header value (nginx proxy_pass decoding class)"
+      - "Canary from malformed Range request contaminates subsequent plain GET (cache poisoning candidate)"
+      - "Canary parsed into status line / reason phrase region"
+    false_positives:
+      - "Body-echo of the canary string is not header injection; verify placement"
+      - "No cache headers means range probe is inconclusive, not negative"
+      - "WAF URL-decoding may normalize payloads before origin sees them"
+    next:
+      if_findings: verify
+      if_no_findings: null
+
 evidence_templates:
   smuggling_curl: "curl -v raw smuggling request/response pair"
   cache_header_dump: "curl -sD headers.txt showing cache hit with poisoned value"

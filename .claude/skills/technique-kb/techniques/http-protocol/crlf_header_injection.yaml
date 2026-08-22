@@ -1,0 +1,66 @@
+id: http-crlf-header-injection-desync
+name: CRLF Header Injection Escalating to Request Desync
+category: http-protocol
+description: >
+  Frontend proxies that decode percent-encoded characters inside header values
+  (notably nginx proxy_pass decoding) let an attacker inject a second complete
+  header via %0d%0a in a value. When the injectable header is a framing header
+  (Content-Length or Transfer-Encoding), the injected request smuggles into the
+  backend connection queue. August 2026 PortSwigger research showed mundane
+  header injection escalating to CL.TE desync worms, browser-powered IP-locked
+  desyncs, and HTTPOnly cookie theft via HEAD+Range splitting.
+severity: high
+standards:
+  wstg:
+    - WSTG-INPV-16
+  asvs:
+    - "V13.1.1"
+  cwe:
+    - CWE-93
+    - CWE-436
+applies_to:
+  archetypes:
+    - enterprise-api
+    - cdn-fronted-web
+    - reverse-proxied-app
+  surfaces:
+    - http-endpoint
+requires:
+  auth: none
+  inputs:
+    - live target with at least one reflected header position
+  tools:
+    - python3
+signals:
+  positive:
+    - Injected canary header appears in response after %0d%0a in another value
+    - Response split into two HTTP messages from single request
+    - Backend error mentioning unknown framing or duplicated headers
+  negative:
+    - Canary only appears URL-encoded in body (no decode step)
+    - WAF strips or rejects encoded CRLF before origin
+false_positives:
+  - Body echo of encoded string without header parsing
+evidence_required:
+  - Raw request/response pair showing decoded injection point
+  - Identification of proxy layer (Server/Via/X-Served-By headers)
+safety:
+  tier: active-safe
+  rate_limited: true
+  data_modifying: false
+workflow_mapping:
+  skill: http-protocol
+  workflow: crlf-desync
+related_skills:
+  - nuclei-scanner
+payloads:
+  - name: crlf_header_probe
+    description: Percent-encoded CRLF inside header value with canary header name
+    examples:
+      - "X-BBH-Test: aaa%0d%0aX-Canary123: 1"
+tags:
+  - crlf
+  - desync
+  - request-smuggling
+  - nginx
+  - cache
