@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 echo "=== Validating context ==="
+# Runtime-generated env file; intentionally not a static source target
+# shellcheck source=/dev/null
 source .bb/context.env 2>/dev/null || { echo "Run: bin/bb-init <target>"; exit 1; }
 MISSING=0
 for VAR in TARGET TARGET_URL OUTDIR EVIDENCE_DIR SCOPE_FILE; do

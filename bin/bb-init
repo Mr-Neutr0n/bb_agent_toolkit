@@ -103,6 +103,8 @@ mkdir -p .bb
   printf 'RETRIES=%q\n' "2"
   printf 'RUN_ID=%q\n' "$TS"
   printf 'TOOLS_PATH=%q\n' "/opt/homebrew/bin:${HOME}/.pdtm/go/bin:${HOME}/go/bin:${HOME}/Library/Python/3.14/bin:${PATH}"
+  # Emitting literal $TOOLS_PATH for the generated env file is intentional
+  # shellcheck disable=SC2016
   printf 'export PATH="$TOOLS_PATH"\n'
 } > .bb/context.env
 

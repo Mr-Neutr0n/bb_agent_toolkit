@@ -101,6 +101,8 @@ fi
 # Source context and export it so preflight helpers see the same RunContext.
 if [ -f .bb/context.env ]; then
   set -a
+  # Runtime-generated env file; intentionally not a static source target
+  # shellcheck source=/dev/null
   source .bb/context.env
   set +a
   export PATH="$HOME/.pdtm/go/bin:$HOME/go/bin:$PATH"
