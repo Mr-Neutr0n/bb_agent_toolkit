@@ -143,6 +143,30 @@ workflows:
       if_findings: null
       if_no_findings: null
 
+  oauth-conformance:
+    description: OIDC conformance sweep - discovery grading, PKCE/state error differentials, response_type=none, end-session open redirects, device-flow audit, nOAuth manual checklist emitter
+    inputs: [TARGET_URL, OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/auth/conformance && \
+      python3 .claude/skills/auth/scripts/oauth_conformance.py wellknown --issuer "${OAUTH_ISSUER:?Set OAUTH_ISSUER}" --output $OUTDIR/auth/conformance/wellknown.json && \
+      python3 .claude/skills/auth/scripts/oauth_conformance.py authorize --issuer "$OAUTH_ISSUER" --client-id "${OAUTH_CLIENT_ID:-bbh-probe}" --redirect-uri "${OAUTH_REDIRECT_URI:-https://$TARGET/cb}" --output $OUTDIR/auth/conformance/authorize.json
+    outputs:
+      - $OUTDIR/auth/conformance/wellknown.json
+      - $OUTDIR/auth/conformance/authorize.json
+    evidence_dir: $OUTDIR/auth/conformance/evidence/
+    safety_tier: active-safe
+    detection_signals:
+      - "Discovery advertises risky config (none alg, query response mode)"
+      - "Authorize endpoint accepts missing state or unknown client without clean 400"
+      - "end_session post_logout_redirect_uri lands on external host"
+      - "Device flow issues codes to unauthenticated unknown clients"
+    false_positives:
+      - "Inconclusive PKCE result needs interactive verification before claiming"
+      - "Provider-specific extensions misread as misconfig"
+    next:
+      if_findings: oauth-redirects
+      if_no_findings: null
+
 evidence_templates:
   jwt_forge: "Forged JWT token + successful access response"
   oauth_bypass: "Redirect URI bypass request/response with stolen code"
