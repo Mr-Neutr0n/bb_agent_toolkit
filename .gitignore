@@ -84,3 +84,4 @@ venv/
 *.swp
 *.swo
 .gstack/
+workdir/
