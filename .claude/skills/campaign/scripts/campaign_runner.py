@@ -227,6 +227,30 @@ class Campaign:
             (self.dir / "status.json").write_text(json.dumps(status, indent=2))
         return status
 
+    # Explicit FSM: RECON->PLAN->EXECUTE->VERIFY->REPORT persisted so external
+    # tooling and resumed runs read deterministic phase transitions.
+    FSM_PHASES = ["init", "backbone", "execute", "report", "done"]
+
+    def fsm_transition(self, new_phase, note=""):
+        state_path = self.dir / "state.json" if self.dir else None
+        try:
+            state = json.loads(state_path.read_text()) if state_path and state_path.exists() else {
+                "campaign_id": self.campaign_id, "history": []}
+        except Exception:
+            state = {"campaign_id": self.campaign_id, "history": []}
+        prev = state.get("phase")
+        entry = {"from": prev, "to": new_phase, "at": now_iso(), "note": note}
+        if prev == new_phase:
+            state["last_seen"] = now_iso()
+            state["resumed_in_phase"] = True
+        else:
+            state["phase"] = new_phase
+            state.setdefault("history", []).append(entry)
+            if len(state["history"]) > 50:
+                state["history"] = state["history"][-50:]
+        state["updated_at"] = now_iso()
+        state_path.write_text(json.dumps(state, indent=2))
+
     # ---- execution primitives ----
     def run_cmd(self, argv, label, timeout=None):
         """Run a subprocess, stream nothing (capture), log result. Returns exit code."""
@@ -275,6 +299,7 @@ class Campaign:
     # ---- phases ----
     def phase_backbone(self):
         self.log("=== PHASE: recon + domain model + plan ===")
+        self.fsm_transition("backbone", note="recon+model+plan phase start")
         self.write_status("backbone")
         for skill, wf, min_tier in BACKBONE:
             if self.over_budget():
@@ -292,6 +317,7 @@ class Campaign:
 
     def phase_execute(self, outdir):
         self.log("=== PHASE: execute vulnerability skills (priority order) ===")
+        self.fsm_transition("execute", note="priority skill execution start")
         order = ranked_skills_from_plan(outdir)
         if order:
             self.log(f"Plan-ranked skills: {', '.join(order)}")
@@ -327,7 +353,9 @@ class Campaign:
 
     def phase_report(self):
         self.log("=== PHASE: reporting + readiness (always runs) ===")
+        self.fsm_transition("report", note="report phase start (ignores budget)")
         self.write_status("report")
+        
         # reporting + impact verification are best-effort
         for skill, wf in [("reporting", "batch-generate"),
                           ("impact-verifier", "collect-candidates"),
@@ -398,6 +426,7 @@ class Campaign:
                 self.phase_execute(outdir)
             self.phase_report()
         finally:
+            self.fsm_transition("done", note="campaign terminal state")
             final = self.write_status("done")
             self.log(f"=== CAMPAIGN COMPLETE === ran={final['workflows_run']} "
                      f"ok={final['workflows_ok']} failed={final['workflows_failed']} "
