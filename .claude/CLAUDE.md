@@ -177,6 +177,7 @@ Always prefer `bin/bb-run <skill> <workflow>` after context is initialized. If y
 | 43 | `meme-coin-audit` | Token rug-pull detection, Solana SPL risks, DEX liquidity attacks. |
 | 44 | `triage-validation` | Pre-report validation gate: 7-question gate and submission checklists. |
 | 45 | `identity-domain` | No-creds identity infra recon: NTLM leaks, ADCS/ADFS endpoints, Entra tenant metadata, SPN OSINT. |
+| 46 | `binary-analysis` | Desktop/native binary triage and MCP-driven x64dbg dynamic analysis for shipped executables. |
 
 ## Dispatch Rules
 
@@ -222,6 +223,7 @@ Always prefer `bin/bb-run <skill> <workflow>` after context is initialized. If y
 | Latest CVEs, disclosed reports, PoCs for target | `vuln-intel` |
 | Scope validation, out-of-scope guardrails | `scope-manager` |
 | ADFS, certsrv, NTLM leaks, Entra tenant, SPN leaks on scope | `identity-domain` |
+| Analyze a downloadable desktop binary / packed executable | `binary-analysis` |
 
 If multiple skills match, pick the most specific vulnerability class after recon. If no skill matches but a domain is provided, start with `recon`. If scope is unclear, ask for authorization before intrusive testing.
 

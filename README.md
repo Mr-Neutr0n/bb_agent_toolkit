@@ -57,7 +57,7 @@ bin/bb-hunt https://example.com --time-budget 1h   # autonomous campaign
 
 ## Highlights
 
-- **45 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, CI/CD, GraphQL, web3, identity infrastructure, reporting, and more.
+- **46 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, CI/CD, GraphQL, web3, identity infrastructure, reporting, and more.
 - **Autonomous campaigns** with `bin/bb-hunt`: context init, recon, domain modeling, technique matching, planning, priority-ordered execution, and reporting from one URL.
 - **Thin harness, fat skills**: the harness dispatches; the skills contain the security logic.
 - **Tool registry** for install, health checks, version locking, capability mapping, and risk tiers across 99 external tools.
@@ -206,6 +206,7 @@ bin/bb-run campaign status
 | 43 | `meme-coin-audit` | Token rug-pull detection, Solana SPL risks, DEX liquidity attacks. |
 | 44 | `triage-validation` | Pre-report validation gate: 7-question gate and submission checklists. |
 | 45 | `identity-domain` | No-creds identity infra recon: NTLM leaks, ADCS/ADFS endpoints, Entra tenant metadata, SPN OSINT. |
+| 46 | `binary-analysis` | Desktop binary triage and x64dbg-MCP dynamic analysis |
 
 Grouped by area:
 
@@ -215,7 +216,7 @@ Grouped by area:
 | Web vulnerabilities | `xss`, `sqli`, `ssrf`, `rce`, `file-upload`, `cors-csrf`, `race-condition`, `http-protocol`, `nuclei-scanner` |
 | Auth, API, business logic | `auth`, `api`, `persona`, `cross-account`, `business-logic`, `impact-verifier` |
 | Cloud, mobile, browser, AI | `cloud`, `mobile`, `modern-browser`, `ai-llm`, `agent-safety`, `oob-infra` |
-| Specialized audits | `cicd-security`, `graphql-audit`, `web3-audit`, `meme-coin-audit`, `identity-domain`, `privesc` |
+| Specialized audits | `cicd-security`, `graphql-audit`, `web3-audit`, `meme-coin-audit`, `identity-domain`, `privesc`, `binary-analysis` |
 | Research and reporting | `osint`, `vuln-intel`, `auto-research`, `standard-catalog`, `reporting`, `program-memory`, `scope-manager`, `triage-validation` |
 | Toolkit improvement | `evaluation-harness`, `skill-scientist` |
 

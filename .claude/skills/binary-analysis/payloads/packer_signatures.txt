@@ -1,0 +1,19 @@
+Packer section-name signatures matched by pe_triage:
+upx0 upx1 upx2          -> UPX
+.aspack .adata          -> ASPack
+.themida                -> Themida/WinLicense
+.vmp0 .vmp1             -> VMProtect
+.nsp0 .nsp1             -> NsPack
+.petite                 -> Petite
+pec2                    -> PECompact2
+.mpress1 .mpress2       -> MPRESS
+.enigma1 .enigma2       -> Enigma Protector
+
+Heuristic fallback (no name match):
+- executable section with entropy > 7.2 and raw_size > 4096 -> likely packed
+- virtual_size >> raw_size on executable section -> unpack-at-runtime layout
+
+After identifying packing:
+1. Dynamic session: run to OEP (mcp-call pe-analysis intent), dump image
+2. Re-run pe-triage on the dumped file for real imports and strings
+3. Only then plan breakpoints from api_watchlist.txt
