@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="3.0.0"
+# Resolve repo root through symlinks so PATH-installed copies work, then anchor
+# execution there: workflow commands in skill.yaml use repo-relative paths.
+_resolve_repo_root() {
+  local src="${BASH_SOURCE[0]}" dir
+  while [ -L "$src" ]; do
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+  done
+  cd -P "$(dirname "$src")/.." >/dev/null && pwd
+}
+REPO_ROOT="$(_resolve_repo_root)"
+HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
+export REPO_ROOT
+cd "$REPO_ROOT"
 
 usage() {
-  cat <<'EOF'
-bb-run - execute one workflow from a skill's skill.yaml
+  cat <<EOF
+bb-run $HARNESS_VERSION - execute one workflow from a skill's skill.yaml
 
 Usage:
   bb-run <skill> <workflow>     Run a workflow with the current RunContext
@@ -19,15 +33,15 @@ Examples:
   bb-run auth oauth-conformance
   bb-run identity-domain list
 
-Workflows live in .claude/skills/<skill>/skill.yaml.
-Context comes from .bb/context.env (run bin/bb-init first).
+Workflows live in \$REPO_ROOT/.claude/skills/<skill>/skill.yaml.
+Context comes from \$REPO_ROOT/.bb/context.env (run bb-init first).
 EOF
 }
 
 if [ $# -ge 1 ]; then
   case "$1" in
     -h|--help|help) usage; exit 0 ;;
-    -v|--version) echo "bb-run $VERSION"; exit 0 ;;
+    -v|--version) echo "bb-run $HARNESS_VERSION"; exit 0 ;;
   esac
 fi
 
@@ -53,7 +67,7 @@ fi
 
 SKILL="$1"
 WORKFLOW="$2"
-SCRIPT_DIR=".claude/skills/${SKILL}"
+SCRIPT_DIR="$REPO_ROOT/.claude/skills/${SKILL}"
 
 if [ "$WORKFLOW" = "list" ] || [ "$WORKFLOW" = "-l" ]; then
   python3 - "$SCRIPT_DIR/skill.yaml" "$SKILL" <<'PY'
@@ -99,11 +113,12 @@ PY
 fi
 
 # Source context and export it so preflight helpers see the same RunContext.
-if [ -f .bb/context.env ]; then
+if [ -f "$REPO_ROOT/.bb/context.env" ]; then
   set -a
   # Runtime-generated env file; intentionally not a static source target
   # shellcheck source=/dev/null
-  source .bb/context.env
+  # shellcheck source=/dev/null
+  source "$REPO_ROOT/.bb/context.env"
   set +a
   export PATH="$HOME/.pdtm/go/bin:$HOME/go/bin:$PATH"
 else
@@ -140,7 +155,7 @@ python3 - "$WF_CMD" "${SCRIPT_DIR}" "${SKILL}" "${WORKFLOW}" <<'PY'
 import os, re, shlex, shutil, sys, glob, yaml
 cmd, sdir, skill, wf = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 registry = {}
-for f in glob.glob("tools/registry/*.yaml"):
+for f in glob.glob(os.environ["REPO_ROOT"] + "/tools/registry/*.yaml"):
     try:
         for t in yaml.safe_load(open(f)).get("registry", {}).get("tools", []):
             name = t.get("name", "")
@@ -193,7 +208,7 @@ TARGET_HASH=$(echo -n "${TARGET:-}" | shasum -a 256 | cut -d' ' -f1)
 
 # Circuit breaker: refuse to run when target is in cooldown (consecutive
 # failures or explicit rate-limit flag). Exit 2 = blocked, not a workflow error.
-python3 tools/circuit_breaker.py check --target-hash "$TARGET_HASH" || exit 2
+python3 "$REPO_ROOT/tools/circuit_breaker.py" check --target-hash "$TARGET_HASH" || exit 2
 
 SCOPE_HASH=""
 if [ -n "${SCOPE_FILE:-}" ] && [ -f "$SCOPE_FILE" ]; then
@@ -205,7 +220,7 @@ tools = []
 with open('${SCRIPT_DIR}/skill.yaml') as f:
     tools = yaml.safe_load(f).get('tools_required', [])
 registry = {}
-for rf in glob.glob('tools/registry/*.yaml'):
+for rf in glob.glob(__import__('os').environ['REPO_ROOT'] + '/tools/registry/*.yaml'):
     try:
         for t in yaml.safe_load(open(rf)).get('registry',{}).get('tools',[]):
             n = t.get('name')
@@ -245,7 +260,7 @@ DURATION_MS=$((E_SECS - S_SECS))
 
 # Intentional word split below: each tool name becomes its own --tools-required arg
 # shellcheck disable=SC2086
-python3 tools/run_trace.py record \
+python3 "$REPO_ROOT/tools/run_trace.py" record \
   --skill "$SKILL" \
   --workflow "$WORKFLOW" \
   --safety-tier "$SAFETY_TIER" \

@@ -4,9 +4,17 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning follows [SemVer](https://semver.org/) at the toolkit level.
 
-## [3.1.0] - 2026-08-22
+## [3.1.0] - 2026-08-24
 
 ### Added
+- Distribution packaging: `install.sh` (curl-friendly POSIX bootstrap with
+  dependency verification and PATH symlinking), `uninstall.sh`,
+  Homebrew formula at `packaging/homebrew/bounty-harness.rb`, and
+  tag-triggered release workflow building sha256'd source archives.
+- Path-independent binaries: all five bins resolve REPO_ROOT through symlinks
+  from their own location; RunContext stores absolute OUTDIR/EVIDENCE_DIR so
+  bb-run works from any cwd.
+- `--version` on every binary reading a single VERSION file (3.1.0).
 - `identity-domain` skill (#45): no-creds identity infra recon - NTLM Type 2
   decoding, ADCS web enrollment fingerprinting, ADFS/SAML metadata parsing,
   Entra tenant recon (getuserrealm/OIDC/DKIM-MOERA/MDI), governed Kerberos

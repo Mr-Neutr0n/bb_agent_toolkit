@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches VERSION file
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          FILED="$(cat VERSION)"
+          if [ "$TAG" != "$FILED" ]; then
+            echo "tag v$TAG != VERSION $FILED - bump VERSION to match the tag" >&2
+            exit 1
+          fi
+          echo "VERSION consistent: $FILED"
+
+      - name: Run test gate before release
+        run: |
+          python3 -m pip install pyyaml
+          make test
+          python3 tools/validate_skills.py audit-release
+
+      - name: Build source archive (git archive)
+        id: archive
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          OUT="bounty-harness-${TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="bounty-harness-${TAG#v}/" -o "$OUT" "$TAG"
+          SHA256="$(sha256sum "$OUT" | awk '{print $1}')"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          {
+            echo "## BountyHarness $TAG"
+            echo ""
+            echo "### Source archive"
+            echo ""
+            echo '```'
+            echo "sha256: $SHA256"
+            echo "url:    https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
+            echo '```'
+            echo ""
+            echo "Paste this into packaging/homebrew/bounty-harness.rb before tapping."
+            echo ""
+            echo "### Install"
+            echo ""
+            echo '```bash'
+            echo "curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | sh -s --"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.archive.outputs.file }}
+          generate_release_notes: true

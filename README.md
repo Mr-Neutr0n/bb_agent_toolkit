@@ -42,17 +42,40 @@ flowchart LR
 - **Fat skills** (`.claude/skills/<skill>/`): `SKILL.md` router, machine-executable `skill.yaml`, scripts, runbooks, payloads.
 - **Governance layer**: safety tiers, circuit breaker, scope guardrails, tracing, secret scanning in CI.
 
+## Install
+
+### curl installer (macOS + Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mr-Neutr0n/bounty-harness/main/install.sh | sh -s --
+```
+
+or from a clone:
+
+```bash
+git clone https://github.com/Mr-Neutr0n/bounty-harness.git && cd bounty-harness
+./install.sh                      # into this dir, or set INSTALL_DIR=/path
+uninstall.sh                      # remove symlinks; PURGE=1 to delete the tree
+```
+
+The installer verifies python3 >= 3.11 + PyYAML + git (printing exact fixes for anything missing), clones or pulls the repo, smoke-tests it, and symlinks the five binaries into `~/.local/bin` (falls back to `/usr/local/bin`).
+
+### Homebrew tap (once published)
+
+```bash
+brew tap Mr-Neutr0n/tap https://github.com/Mr-Neutr0n/homebrew-tap
+brew install bounty-harness
+```
+
+The formula lives at `packaging/homebrew/bounty-harness.rb`; releases are cut by pushing a `v*` tag (CI builds and attaches the archive plus its sha256).
+
 ## Quick Start
 
 ```bash
-git clone https://github.com/Mr-Neutr0n/bounty-harness.git
-cd bounty-harness
-make test                      # verify everything parses and compiles
-
-bin/bb-init example.com --program example --scope-file scope.txt
-bin/bb-run list                          # see all 45 skills
-bin/bb-run recon list                    # see a skill's workflows
-bin/bb-hunt https://example.com --time-budget 1h   # autonomous campaign
+bb-init example.com --program example --scope-file scope.txt
+bb-run list                          # see all 46 skills
+bb-run recon list                    # see a skill's workflows
+bb-hunt https://example.com --time-budget 1h   # autonomous campaign
 ```
 
 ## Highlights

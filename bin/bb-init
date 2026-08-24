@@ -1,8 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Resolve repo root through symlinks so PATH-installed copies work.
+# shellcheck disable=SC2317  # resolver is invoked during init, not a callback
+_resolve_repo_root() {
+  local src="${BASH_SOURCE[0]}" dir
+  while [ -L "$src" ]; do
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+  done
+  cd -P "$(dirname "$src")/.." >/dev/null && pwd
+}
+REPO_ROOT="$(_resolve_repo_root)"
+HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
+BB_DIR="$REPO_ROOT/.bb"
+
 usage() {
-  echo "Usage: bb-init <target-domain> [--program NAME] [--scope-file FILE] [--scheme https] [--port 443] [--outdir ./output/TARGET]"
+  echo "Usage: bb-init <target-domain> [--program NAME] [--scope-file FILE] [--scheme https] [--port 443] [--outdir DIR]"
+  echo "       bb-init --version"
 }
 
 TARGET=""
@@ -31,6 +47,8 @@ while [ $# -gt 0 ]; do
       SCOPE_FILE="${2:-}"; shift 2 ;;
     -h|--help)
       usage; exit 0 ;;
+    -v|--version)
+      echo "bb-init $HARNESS_VERSION"; exit 0 ;;
     --*)
       echo "ERROR: unknown option $1" >&2; usage; exit 1 ;;
     *)
@@ -46,7 +64,16 @@ if [ -z "$TARGET" ]; then
   exit 1
 fi
 
-OUTDIR="${OUTDIR:-./output/${TARGET}/$(date +%Y-%m-%d_%H%M)}"
+# OUTDIR is stored ABSOLUTE so later bb-run invocations work from any cwd.
+if [ -z "$OUTDIR" ]; then
+  OUTDIR="$PWD/output/${TARGET}/$(date +%Y-%m-%d_%H%M)"
+else
+  case "$OUTDIR" in
+    /*) ;;                                   # already absolute
+    *)  OUTDIR="$PWD/${OUTDIR#./}" ;;        # resolve against caller's cwd
+  esac
+fi
+
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [ -z "$PROGRAM" ]; then
@@ -64,21 +91,31 @@ fi
 
 if [ -z "$SCOPE_FILE" ]; then
   case "$PROGRAM" in
-    ycombinator) SCOPE_FILE="${PWD}/engagements/ycombinator/scope/Security-Assessment-Authorization-YC.md" ;;
-    openai) SCOPE_FILE="${PWD}/engagements/openai/scope/SCOPE_SUMMARY.md" ;;
+    ycombinator) SCOPE_FILE="$REPO_ROOT/engagements/ycombinator/scope/Security-Assessment-Authorization-YC.md" ;;
+    openai) SCOPE_FILE="$REPO_ROOT/engagements/openai/scope/SCOPE_SUMMARY.md" ;;
     *) SCOPE_FILE="" ;;
   esac
 fi
 
-if [ ! -f "$SCOPE_FILE" ] && [ -f "${PWD}/Security-Assessment-Authorization-YC.md" ]; then
-  SCOPE_FILE="${PWD}/Security-Assessment-Authorization-YC.md"
+if [ -n "$SCOPE_FILE" ]; then
+  case "$SCOPE_FILE" in
+    /*) ;;
+    *)  SCOPE_FILE="$PWD/${SCOPE_FILE#./}" ;;
+  esac
+  if [ ! -f "$SCOPE_FILE" ] && [ -f "$REPO_ROOT/engagements/$(basename "$SCOPE_FILE")" ]; then
+    : # keep as given; existence checked below
+  fi
+fi
+
+if [ ! -f "${SCOPE_FILE:-/nonexistent}" ] && [ -f "$PWD/Security-Assessment-Authorization-YC.md" ]; then
+  SCOPE_FILE="$PWD/Security-Assessment-Authorization-YC.md"
 fi
 
 mkdir -p "$OUTDIR" "${OUTDIR}/evidence"
-mkdir -p .bb
+mkdir -p "$BB_DIR"
 
-# Generate context files. Values are shell-escaped because this repository path
-# commonly contains spaces ("bug bounty").
+# Generate context files. Values are shell-escaped because install paths
+# commonly contain spaces.
 {
   printf 'TARGET=%q\n' "$TARGET"
   printf 'PROGRAM=%q\n' "$PROGRAM"
@@ -90,7 +127,7 @@ mkdir -p .bb
   printf 'EVIDENCE_DIR=%q\n' "${OUTDIR}/evidence"
   printf 'SCOPE_FILE=%q\n' "$SCOPE_FILE"
   printf 'AUTH_HEADER=%q\n' ""
-  printf 'COOKIE_JAR=%q\n' ".bb/cookies.txt"
+  printf 'COOKIE_JAR=%q\n' "$BB_DIR/cookies.txt"
   printf 'OAST_DOMAIN=%q\n' ""
   printf 'INTERACTSH_URL=%q\n' ""
   printf 'RATE_LIMIT=%q\n' "50"
@@ -106,10 +143,10 @@ mkdir -p .bb
   # Emitting literal $TOOLS_PATH for the generated env file is intentional
   # shellcheck disable=SC2016
   printf 'export PATH="$TOOLS_PATH"\n'
-} > .bb/context.env
+} > "$BB_DIR/context.env"
 
 # Generate JSON context
-cat > .bb/context.json << EOFJSON
+cat > "$BB_DIR/context.json" << EOFJSON
 {
   "target": "${TARGET}",
   "program": "${PROGRAM}",
@@ -121,7 +158,7 @@ cat > .bb/context.json << EOFJSON
   "evidence_dir": "${OUTDIR}/evidence",
   "scope_file": "${SCOPE_FILE}",
   "auth_header": "",
-  "cookie_jar": "${PWD}/.bb/cookies.txt",
+  "cookie_jar": "$BB_DIR/cookies.txt",
   "oast_domain": "",
   "interactsh_url": "",
   "rate_limit": 50,
@@ -136,7 +173,6 @@ cat > .bb/context.json << EOFJSON
 }
 EOFJSON
 
-# Verify tools
 echo "=== Context initialized ==="
 echo "Target: $TARGET"
 echo "Program: ${PROGRAM:-unknown}"
@@ -144,4 +180,3 @@ echo "Scheme: $SCHEME"
 echo "Target URL: $TARGET_URL"
 echo "Output: $OUTDIR"
 echo "Run ID: $TS"
-echo "Run: source .bb/context.env"
