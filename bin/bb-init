@@ -13,6 +13,10 @@ _resolve_repo_root() {
   cd -P "$(dirname "$src")/.." >/dev/null && pwd
 }
 REPO_ROOT="$(_resolve_repo_root)"
+# Prefer a formula-managed venv when present (brew install ships pyyaml there)
+if [ -d "$REPO_ROOT/venv/bin" ]; then
+  export PATH="$REPO_ROOT/venv/bin:$PATH"
+fi
 HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
 BB_DIR="$REPO_ROOT/.bb"
 

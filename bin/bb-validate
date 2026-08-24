@@ -14,6 +14,10 @@ _resolve_repo_root() {
 REPO_ROOT="$(_resolve_repo_root)"
 HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
 export REPO_ROOT
+# Prefer a formula-managed venv when present (brew install ships pyyaml there)
+if [ -d "$REPO_ROOT/venv/bin" ]; then
+  export PATH="$REPO_ROOT/venv/bin:$PATH"
+fi
 
 if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--version" ]; then
   echo "bb-validate $HARNESS_VERSION"; exit 0
