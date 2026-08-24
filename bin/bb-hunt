@@ -6,14 +6,33 @@ set -euo pipefail
 # at the repo root, and hands off to the engine, which bootstraps its own context
 # (bb-init) so it can be pointed at a brand-new URL with no prior setup.
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT"
+# Resolve repo root through symlinks so PATH-installed copies work.
+_resolve_repo_root() {
+  local src="${BASH_SOURCE[0]}" dir
+  while [ -L "$src" ]; do
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+  done
+  cd -P "$(dirname "$src")/.." >/dev/null && pwd
+}
+REPO_ROOT="$(_resolve_repo_root)"
+HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
+export REPO_ROOT
+
+if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--version" ]; then
+  echo "bb-hunt $HARNESS_VERSION"; exit 0
+fi
+
+cd "$REPO_ROOT"
 export PATH="/opt/homebrew/bin:$HOME/.pdtm/go/bin:$HOME/go/bin:$HOME/Library/Python/3.14/bin:$PATH"
 
-RUNNER=".claude/skills/campaign/scripts/campaign_runner.py"
+RUNNER="$REPO_ROOT/.claude/skills/campaign/scripts/campaign_runner.py"
 
 if [ $# -lt 1 ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-  cat <<'EOF'
+  cat <<EOF
+bb-hunt $HARNESS_VERSION - autonomous bug bounty campaign runner
+
 Usage: bb-hunt <url-or-domain> [options]
 
 Runs an autonomous recon -> domain-model -> plan -> execute -> report campaign

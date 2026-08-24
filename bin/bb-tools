@@ -4,9 +4,25 @@ set -euo pipefail
 # bb-tools — BountyHarness tool lifecycle manager
 # Thin harness: no vulnerability logic, only registry and install operations.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$PROJECT_ROOT"
+# Resolve repo root through symlinks so PATH-installed copies work.
+_resolve_repo_root() {
+  local src="${BASH_SOURCE[0]}" dir
+  while [ -L "$src" ]; do
+    dir="$(cd -P "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+  done
+  cd -P "$(dirname "$src")/.." >/dev/null && pwd
+}
+REPO_ROOT="$(_resolve_repo_root)"
+HARNESS_VERSION="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")"
+export REPO_ROOT
+
+if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--version" ]; then
+  echo "bb-tools $HARNESS_VERSION"; exit 0
+fi
+
+cd "$REPO_ROOT"
 
 # Source context env for PATH if available
 [ -f .bb/context.env ] && source .bb/context.env 2>/dev/null || true
