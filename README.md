@@ -24,13 +24,19 @@ Modern bug bounty work is not one scanner. It is a loop:
 
 BountyHarness packages that loop into reusable, inspectable workflows so an agent does not need to invent a new pipeline every time.
 
+## Demo
+
+![BountyHarness terminal demo](docs/demo.gif)
+
+Reproducible with [VHS](https://github.com/charmbracelet/vhs): `vhs docs/demo.tape`.
+
 ## Architecture
 
 ```mermaid
 flowchart LR
     A[bin/bb-init<br/>RunContext] --> B[bin/bb-validate]
     B --> C[bin/bb-run<br/>workflow executor]
-    C --> D[(45 skill packages)]
+    C --> D[(46 skill packages)]
     B --> E[bin/bb-hunt<br/>autonomous campaign]
     E --> C
     C --> F[.bb/traces<br/>circuit breaker]
@@ -60,14 +66,13 @@ uninstall.sh                      # remove symlinks; PURGE=1 to delete the tree
 
 The installer verifies python3 >= 3.11 + PyYAML + git (printing exact fixes for anything missing), clones or pulls the repo, smoke-tests it, and symlinks the five binaries into `~/.local/bin` (falls back to `/usr/local/bin`).
 
-### Homebrew tap (once published)
+### Homebrew
 
 ```bash
-brew tap Mr-Neutr0n/tap https://github.com/Mr-Neutr0n/homebrew-tap
-brew install bounty-harness
+brew install mr-neutr0n/tap/bounty-harness
 ```
 
-The formula lives at `packaging/homebrew/bounty-harness.rb`; releases are cut by pushing a `v*` tag (CI builds and attaches the archive plus its sha256).
+The formula lives in the [homebrew-tap](https://github.com/Mr-Neutr0n/homebrew-tap) repo; pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically.
 
 ## Quick Start
 
@@ -89,44 +94,6 @@ bb-hunt https://example.com --time-budget 1h   # autonomous campaign
 - **Planning and knowledge systems**: domain model, technique KB, coverage ledger, program memory (with negative-result tracking), asset graph, traffic corpus, and vulnerability intelligence.
 - **Workflow tracing**: every run records timing, safety tier, tools used, and exit codes to `.bb/traces/runs.jsonl`.
 - **Impact verification and reporting**: candidate aggregation, false-positive gates, CVSS/report generation, and HackerOne/Bugcrowd/generic platform exports.
-
-## Architecture
-
-```text
-Agent
-  |
-  v
-Thin harness: bin/bb-init, bb-validate, bb-run, bb-hunt, bb-tools
-  |
-  v
-Fat skills: .claude/skills/<skill>/{SKILL.md,skill.yaml,scripts,runbooks,payloads}
-  |
-  v
-External tools from tools/registry/*.yaml
-  |
-  v
-Local-only runtime state: .bb/ and output/
-```
-
-The central rule is simple: **do not move bug bounty logic into the harness**. Add or improve capability inside the relevant skill package.
-
-## Quick Start
-
-```bash
-git clone https://github.com/Mr-Neutr0n/bounty-harness.git
-cd bounty-harness
-
-export PATH="/opt/homebrew/bin:$HOME/.pdtm/go/bin:$HOME/go/bin:$HOME/Library/Python/3.14/bin:$PATH"
-python3 -m pip install pyyaml requests
-
-bin/bb-tools doctor
-bin/bb-init example.com --program example --scope-file ./engagements/example/scope.md
-bin/bb-validate
-bin/bb-run recon passive-subdomains
-bin/bb-run recon live-discovery
-bin/bb-run domain-model classify
-bin/bb-run planner generate-plan-safe
-```
 
 The directories `engagements/`, `.bb/`, `output/`, `evidence/`, `captures/`, and other runtime paths are intentionally ignored by git. Keep target scopes, cookies, tokens, HAR files, screenshots, private traffic, and generated evidence out of commits.
 
