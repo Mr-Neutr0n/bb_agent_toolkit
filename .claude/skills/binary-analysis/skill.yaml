@@ -1,0 +1,108 @@
+name: binary-analysis
+version: "1.0.0"
+description: >
+  Desktop/native binary triage and dynamic analysis for bounty targets that ship
+  executables. Static PE analysis (stdlib-only) plus MCP-driven x64dbg sessions
+  (breakpoints, memory, registers, modules) for deeplink handlers, update
+  mechanisms, license checks, and packed downloadables. Local-only toward targets.
+bounded_context: BinaryAnalysisContext
+safety_tier: passive
+owasp_wstg:
+  - WSTG-BUSL-09
+owasp_api_top10: []
+severity_range: [info, low, medium, high, critical]
+tools_required:
+  - python3
+input_files:
+  - downloads/
+workflows:
+  pe-triage:
+    description: Static first-pass of a Windows binary - arch, sections, packer heuristics, watchlist API imports, embedded URLs/IPs.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/binary-analysis && \
+      python3 .claude/skills/binary-analysis/scripts/pe_triage.py \
+        --file "${BINARY_PATH:?Set BINARY_PATH to the downloaded executable}" \
+        --output $OUTDIR/binary-analysis/triage.json
+    outputs:
+      - $OUTDIR/binary-analysis/triage.json
+    evidence_dir: $OUTDIR/binary-analysis/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "Packer section names or high-entropy executable sections present"
+      - "Network/crypto/process-injection APIs imported"
+      - "Embedded endpoints reveal backend infrastructure"
+    false_positives:
+      - "High entropy from legitimate embedded assets or compression"
+      - "Debug API imports left in release builds by careless tooling"
+    next:
+      if_findings: mcp-tools
+      if_no_findings: null
+
+  pe-triage-batch:
+    description: Batch static triage over a directory of downloaded binaries.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/binary-analysis && \
+      python3 .claude/skills/binary-analysis/scripts/pe_triage.py \
+        --dir "${BINARIES_DIR:?Set BINARIES_DIR}" \
+        --output-dir $OUTDIR/binary-analysis/
+    outputs:
+      - $OUTDIR/binary-analysis/pe_triage.jsonl
+    evidence_dir: $OUTDIR/binary-analysis/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "One or more binaries flagged likely_packed or with watchlist import clusters"
+    next:
+      if_findings: mcp-tools
+      if_no_findings: null
+
+  mcp-tools:
+    description: Enumerate tools exposed by a running x64dbg-mcp-server session.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/binary-analysis && \
+      python3 .claude/skills/binary-analysis/scripts/mcp_client.py tools \
+        --url "${X64DBG_URL:-http://localhost:9094/}" \
+        --token-file "${X64DBG_TOKEN_FILE:-.bb/x64dbg.token}" \
+        --output $OUTDIR/binary-analysis/mcp_tools.json
+    outputs:
+      - $OUTDIR/binary-analysis/mcp_tools.json
+    evidence_dir: null
+    safety_tier: passive
+    detection_signals:
+      - "MCP server reachable with valid bearer token"
+    false_positives:
+      - "x64dbg not running or plugin not installed returns connection refused"
+    next:
+      if_findings: mcp-call
+      if_no_findings: null
+
+  mcp-call:
+    description: Invoke one debugger capability by intent (registers, modules, strings, breakpoint, memory-read...) against the live session.
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/binary-analysis && \
+      python3 .claude/skills/binary-analysis/scripts/mcp_client.py call \
+        --url "${X64DBG_URL:-http://localhost:9094/}" \
+        --token-file "${X64DBG_TOKEN_FILE:-.bb/x64dbg.token}" \
+        --intent "${MCP_INTENT:?Set MCP_INTENT: registers|modules|threads|strings|patterns|xrefs|breakpoint|step|memory-read|disassemble|callstack|pe-analysis}" \
+        --args "${MCP_ARGS:-{}}" \
+        --output $OUTDIR/binary-analysis/mcp_call.json
+    outputs:
+      - $OUTDIR/binary-analysis/mcp_call.json
+    evidence_dir: $OUTDIR/binary-analysis/evidence/
+    safety_tier: passive
+    detection_signals:
+      - "Debugger state captured: register context, module layout, string refs"
+      - "Breakpoint hits at watched APIs during manual target interaction"
+    false_positives:
+      - "Intent matched multiple tool names; first candidate used - check matched_candidates"
+      - "Debugger busy in running state; pause before state queries"
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  pe_triage: "Arch/subsystem/timestamp, section table with entropies, packer verdict, watchlist imports, embedded indicators"
+  dynamic_session: "Tool called, arguments, register/memory snapshot, timestamped against manual interaction steps"

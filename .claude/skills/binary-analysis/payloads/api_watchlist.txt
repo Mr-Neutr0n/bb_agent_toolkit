@@ -1,0 +1,37 @@
+# API watchlist for dynamic sessions
+# Breakpoint candidates grouped by what they prove about a target binary.
+# Used by triage (import scan) and by operators choosing breakpoint addresses.
+
+[network]
+WinHttpSendRequest        # outbound HTTP - update/license/telemetry flows
+WinHttpOpen               # session init, reveals UA/proxy config
+InternetOpenUrl           # legacy direct URL fetches
+URLDownloadToFile         # dropper-style download behavior
+WSAStartup / connect / send / recv   # raw sockets, custom protocols
+
+[crypto]
+CryptStringToBinary       # base64/hex decode of embedded or fetched blobs
+CryptUnprotectData        # DPAPI: stored secrets, browser credential paths
+BCryptDecrypt             # modern CNG decryption - license/config blobs
+CryptDecrypt              # legacy CryptoAPI decryption
+CryptAcquireContext
+
+[process]
+CreateProcess             # child process spawning, elevation chains
+ShellExecute              # shell integration, protocol handler dispatch
+SetWindowsHookEx          # global hooks - keylogging-class capability
+WriteProcessMemory        # self-injection / unpacking / patching
+VirtualAllocEx            # remote allocation alongside WriteProcessMemory
+CreateRemoteThread
+
+[anti_analysis]
+IsDebuggerPresent         # trivial debugger check
+CheckRemoteDebuggerPresent
+NtQueryInformationProcess # ProcessDebugPort/Flags queries
+OutputDebugString         # anti-debug via debug object side effects
+
+[watch_strategy]
+1. Triage flags the cluster; pick 2-3 APIs max for a first session
+2. Network APIs first (reveal endpoints + payload shapes)
+3. Crypto second (catch plaintext before encryption at send sites)
+4. Anti-analysis hits mean: run under ScyllaHide-class plugin BEFORE breakpoints

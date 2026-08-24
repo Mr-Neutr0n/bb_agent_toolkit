@@ -26,6 +26,9 @@ versioning follows [SemVer](https://semver.org/) at the toolkit level.
   first-seen dates and new-asset flagging.
 - Tool registry: burp-mcp, trufflehog, crt.name entries.
 
+### Added
+- `binary-analysis` skill (#46): static PE triage (stdlib) + MCP-driven x64dbg dynamic sessions for desktop-app bounty surface.
+
 ### Changed
 - bb-run UX: --help/--version, `list` commands for skills and workflows.
 - Traces now record tools_required from skill.yaml.
