@@ -186,6 +186,24 @@ workflows:
       if_findings: validate-playbook
       if_no_findings: validate-playbook
 
+  apply-model-overrides:
+    description: "Apply per-depth model overrides to a plan (Kritt-style model_overrides)"
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/planner && \
+      python3 .claude/skills/planner/scripts/model_overrides.py --plan "$OUTDIR/planner/plan.json" --overrides "${MODEL_OVERRIDES:-.claude/skills/planner/payloads/model_overrides_example.json}" --output "$OUTDIR/planner/plan.with_models.json"
+    outputs:
+      - $OUTDIR/planner/plan.with_models.json
+    evidence_dir: $OUTDIR/planner
+    safety_tier: passive
+    detection_signals:
+      - "plan items annotated with model_override per depth"
+    false_positives:
+      - "missing depth in overrides falls back to default model"
+    next:
+      if_findings: null
+      if_no_findings: null
+
 evidence_templates:
   plan_json: "Ranked test plan with scores, rationales, safety flags, and evidence requirements per plan item — saved to $OUTDIR/planner/plan.json"
   plan_markdown: "Human-readable visualization of the ranked plan for review before execution — saved to $OUTDIR/planner/plan.md"

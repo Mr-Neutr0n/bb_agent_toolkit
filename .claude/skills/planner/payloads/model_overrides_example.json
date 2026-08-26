@@ -1,0 +1,6 @@
+{
+  "0": "gpt-4o-mini",
+  "1": "gpt-4o-mini",
+  "2": "claude-opus-4",
+  "default": "gpt-4o-mini"
+}
