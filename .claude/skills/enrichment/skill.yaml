@@ -1,0 +1,80 @@
+name: enrichment
+version: 1.0.0
+description: Post-processing enrichment for verified findings — report drafts, PoC diffs, and triage chips (Kritt-style post-scripts with supplemental re-runs).
+bounded_context: EnrichmentContext
+safety_tier: passive
+owasp_wstg:
+  - WSTG-CONF-01
+owasp_api_top10: []
+severity_range: [info, low, medium, high, critical]
+tools_required:
+  - python3
+  - jq
+input_files:
+  - findings.jsonl
+workflows:
+  enrich:
+    description: Run a post-script on the next unenriched finding (report, PoC, or chip)
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/enrichment && \
+      python3 .claude/skills/enrichment/scripts/enrich.py enrich \
+        --findings "${FINDINGS_FILE:-$OUTDIR/impact-verifier/verified.jsonl}" \
+        --post-script "${POST_SCRIPT:-.claude/skills/enrichment/payloads/report_template.md}" \
+        --output $OUTDIR/enrichment/enrichments.jsonl \
+        ${ENRICH_LLM:+--llm}
+    outputs:
+      - $OUTDIR/enrichment/enrichments.jsonl
+    evidence_dir: $OUTDIR/enrichment/evidence/
+    detection_signals:
+      - "enrichment JSON with _reserved_report or _reserved_poc populated"
+      - "chip tags aggregated from _chip_* outputs"
+    false_positives:
+      - "LLM enrichment may hallucinate without tool validation"
+    next:
+      if_findings: supplemental
+      if_no_findings: supplemental
+
+  supplemental:
+    description: Re-run a post-script on previously enriched findings (additive supplemental runs)
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/enrichment && \
+      python3 .claude/skills/enrichment/scripts/enrich.py supplemental \
+        --findings "${FINDINGS_FILE:-$OUTDIR/impact-verifier/verified.jsonl}" \
+        --post-script "${POST_SCRIPT:-.claude/skills/enrichment/payloads/poc_template.md}" \
+        --enrichments $OUTDIR/enrichment/enrichments.jsonl \
+        --output $OUTDIR/enrichment/enrichments.jsonl \
+        ${ENRICH_LLM:+--llm}
+    outputs:
+      - $OUTDIR/enrichment/enrichments.jsonl
+    evidence_dir: $OUTDIR/enrichment/evidence/
+    detection_signals:
+      - "supplemental enrichments appended with distinct post_script_id"
+    false_positives:
+      - "re-running same post-script on same finding is deduplicated"
+    next:
+      if_findings: list-enrichments
+      if_no_findings: list-enrichments
+
+  list-enrichments:
+    description: List enrichments and their status without running anything
+    safety_tier: passive
+    inputs: [OUTDIR]
+    command: |
+      python3 .claude/skills/enrichment/scripts/list_enrichments.py --enrichments $OUTDIR/enrichment/enrichments.jsonl
+    outputs: []
+    evidence_dir: $OUTDIR/enrichment/evidence/
+    detection_signals:
+      - "enrichments listed with post_script name and status"
+    false_positives: []
+    next:
+      if_findings: null
+      if_no_findings: null
+
+evidence_templates:
+  enrichment: "JSON with post_script name, prompt, output (report/poc/chip), and source finding id"
+  supplemental_run: "Additive enrichment history per finding"
+  chip_tags: "Short tags from _chip_* outputs aggregated per finding"
