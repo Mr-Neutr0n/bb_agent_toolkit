@@ -9,11 +9,11 @@ Usage:
 import argparse
 import re
 import shlex
+import subprocess
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-import subprocess
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_LINES = 10000
