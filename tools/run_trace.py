@@ -22,6 +22,33 @@ def append_trace(record: dict, jsonl_path: str = ".bb/traces/runs.jsonl") -> Non
         f.write(json.dumps(record, sort_keys=True) + "\n")
 
 
+class BatchedTraceWriter:
+    """Batched trace writer — buffers runs.jsonl writes and flushes every N or interval (like Osmedeus WriteCoordinator)."""
+
+    def __init__(self, jsonl_path: str = ".bb/traces/runs.jsonl", batch_size: int = 10, flush_interval: float = 5.0):
+        self.jsonl_path = jsonl_path
+        self.batch_size = batch_size
+        self.flush_interval = flush_interval
+        self.buffer: list[dict] = []
+        self.last_flush = time.time()
+
+    def append(self, record: dict) -> None:
+        record.setdefault("_written_at", time.time())
+        self.buffer.append(record)
+        if len(self.buffer) >= self.batch_size or (time.time() - self.last_flush) >= self.flush_interval:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self.buffer:
+            return
+        os.makedirs(os.path.dirname(self.jsonl_path), exist_ok=True)
+        with open(self.jsonl_path, "a") as f:
+            for r in self.buffer:
+                f.write(json.dumps(r, sort_keys=True) + "\n")
+        self.buffer.clear()
+        self.last_flush = time.time()
+
+
 def init_trace_db(sqlite_path: str = ".bb/traces/runs.sqlite") -> None:
     os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
     conn = sqlite3.connect(sqlite_path)
