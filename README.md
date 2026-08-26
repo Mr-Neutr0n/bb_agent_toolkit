@@ -69,10 +69,10 @@ The installer verifies python3 >= 3.11 + PyYAML + git (printing exact fixes for 
 ### Homebrew
 
 ```bash
-brew install mr-neutr0n/tap/bounty-harness
+brew install mr-neutr0n/bounty-harness/bounty-harness
 ```
 
-The formula lives in the [homebrew-tap](https://github.com/Mr-Neutr0n/homebrew-tap) repo; pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically.
+The formula lives in the [homebrew-bounty-harness](https://github.com/Mr-Neutr0n/homebrew-bounty-harness) repo; pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically.
 
 ## Quick Start
 
