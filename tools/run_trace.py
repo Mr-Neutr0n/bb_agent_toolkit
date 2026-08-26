@@ -11,12 +11,15 @@ import json
 import os
 import sqlite3
 import sys
+import atexit
 import time
 import uuid
 
 
 def append_trace(record: dict, jsonl_path: str = ".bb/traces/runs.jsonl") -> None:
-    os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
+    d = os.path.dirname(jsonl_path)
+    if d:
+        os.makedirs(d, exist_ok=True)
     record.setdefault("_written_at", time.time())
     with open(jsonl_path, "a") as f:
         f.write(json.dumps(record, sort_keys=True) + "\n")
@@ -31,6 +34,7 @@ class BatchedTraceWriter:
         self.flush_interval = flush_interval
         self.buffer: list[dict] = []
         self.last_flush = time.time()
+        atexit.register(self.flush)
 
     def append(self, record: dict) -> None:
         record.setdefault("_written_at", time.time())
@@ -41,12 +45,15 @@ class BatchedTraceWriter:
     def flush(self) -> None:
         if not self.buffer:
             return
-        os.makedirs(os.path.dirname(self.jsonl_path), exist_ok=True)
+            d = os.path.dirname(self.jsonl_path)
+        if d:
+            os.makedirs(d, exist_ok=True)
         with open(self.jsonl_path, "a") as f:
             for r in self.buffer:
                 f.write(json.dumps(r, sort_keys=True) + "\n")
         self.buffer.clear()
         self.last_flush = time.time()
+        atexit.register(self.flush)
 
 
 def init_trace_db(sqlite_path: str = ".bb/traces/runs.sqlite") -> None:

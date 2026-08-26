@@ -41,7 +41,7 @@ class ShardedCache:
         shard[key] = value
         shard.move_to_end(key)
         # Evict oldest if over per-shard quota
-        per_shard = self.max_size // self.shards_count
+        per_shard = max(1, self.max_size // self.shards_count)
         while len(shard) > per_shard:
             shard.popitem(last=False)
 
@@ -87,12 +87,13 @@ def main():
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
-        return
+        sys.exit(2)
 
     if args.command == "render":
         vars_dict = json.loads(args.vars)
         result = render_template(args.template, vars_dict)
         if args.output:
+            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             Path(args.output).write_text(result, encoding="utf-8")
         print(result)
     elif args.command == "clear":

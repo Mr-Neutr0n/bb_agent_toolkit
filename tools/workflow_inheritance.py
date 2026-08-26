@@ -19,8 +19,18 @@ from pathlib import Path
 import yaml
 
 
+def _safe_skill_path(name: str) -> Path:
+    import re
+    if not re.match(r"^[a-z0-9_-]{1,64}$", name):
+        print(f"ERROR: invalid skill name: {name}", file=sys.stderr); sys.exit(1)
+    p = (Path(".claude/skills") / name / "skill.yaml").resolve()
+    root = Path(".claude/skills").resolve()
+    if not p.is_relative_to(root):
+        print("ERROR: skill path escapes", file=sys.stderr); sys.exit(1)
+    return p
+
 def load_skill(skill_name: str) -> dict:
-    path = Path(f".claude/skills/{skill_name}/skill.yaml")
+    path = _safe_skill_path(skill_name)
     if not path.exists():
         print(f"ERROR: base skill not found: {skill_name}", file=sys.stderr)
         sys.exit(1)
@@ -28,7 +38,7 @@ def load_skill(skill_name: str) -> dict:
 
 
 def resolve_inheritance(skill_name: str) -> dict:
-    skill_path = Path(f".claude/skills/{skill_name}/skill.yaml")
+    skill_path = _safe_skill_path(skill_name)
     data = yaml.safe_load(skill_path.read_text(encoding="utf-8"))
     extends = data.get("extends")
     if not extends:
