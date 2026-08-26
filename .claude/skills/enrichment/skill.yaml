@@ -22,6 +22,7 @@ workflows:
       python3 .claude/skills/enrichment/scripts/enrich.py enrich \
         --findings "${FINDINGS_FILE:-$OUTDIR/impact-verifier/verified.jsonl}" \
         --post-script "${POST_SCRIPT:-.claude/skills/enrichment/payloads/report_template.md}" \
+        --enrichments $OUTDIR/enrichment/enrichments.jsonl \
         --output $OUTDIR/enrichment/enrichments.jsonl \
         ${ENRICH_LLM:+--llm}
     outputs:

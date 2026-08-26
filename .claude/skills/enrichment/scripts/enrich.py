@@ -64,9 +64,12 @@ def load_enriched_ids(enrich_path: Path) -> set[str]:
 
 
 def finding_id(f: dict, idx: int) -> str:
-    # stable id from title+file+line or fallback to index
-    raw = f"{f.get('title','')}|{f.get('file_path','')}|{f.get('line','')}|{idx}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:12]
+    # stable id from title+file+line+vuln_type; idx only as tie-breaker for true duplicates
+    raw = f"{f.get('title','')}|{f.get('file_path','')}|{f.get('line','')}|{f.get('vulnerability_type','')}|{f.get('severity','')}"
+    # If two findings have identical keys, disambiguate via idx by hashing idx in as well
+    raw_with_idx = f"{raw}|{idx}"
+    # Use raw without idx first, but if collision would happen, idx ensures uniqueness - we use raw_with_idx always for stability
+    return hashlib.sha256(raw_with_idx.encode()).hexdigest()[:12]
 
 
 def heuristic_enrich(finding: dict, post_script_text: str, post_script_name: str) -> dict:

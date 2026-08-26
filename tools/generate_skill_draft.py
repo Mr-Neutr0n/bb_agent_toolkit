@@ -12,15 +12,16 @@ Usage:
 import argparse
 import json
 import re
+import shlex
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def log(msg: str) -> None:
@@ -36,6 +37,7 @@ def sanitize_slug(text: str) -> str:
 
 def heuristic_draft(request: str) -> dict:
     slug = sanitize_slug(request[:40])
+    safe_req = shlex.quote(request[:40])
     return {
         "name": slug,
         "version": "0.1.0",
@@ -52,7 +54,7 @@ def heuristic_draft(request: str) -> dict:
                 "description": f"Heuristic draft for: {request[:80]}",
                 "safety_tier": "passive",
                 "inputs": ["OUTDIR"],
-                "command": f"mkdir -p $OUTDIR/{slug} && echo 'Draft for {request[:40]}' > $OUTDIR/{slug}/draft.txt",
+                "command": f"mkdir -p $OUTDIR/{slug} && echo {safe_req} > $OUTDIR/{slug}/draft.txt",
                 "outputs": [f"$OUTDIR/{slug}/draft.txt"],
                 "evidence_dir": f"$OUTDIR/{slug}/evidence/",
                 "detection_signals": [f"draft output for {slug}"],
@@ -87,6 +89,12 @@ def llm_draft(request: str) -> dict:
     if "name" not in data or "workflows" not in data:
         raise RuntimeError("LLM draft missing name/workflows")
     data["name"] = sanitize_slug(data["name"])
+    # Sanitize LLM-provided workflow commands: reject shell metachars
+    for wf_name, wf in list(data.get("workflows", {}).items()):
+        cmd = wf.get("command", "")
+        if any(p in cmd for p in ["|", ";", "&&", "`", "$("]):
+            log(f"WARN: sanitizing LLM workflow {wf_name} command with shell metachars")
+            wf["command"] = f"mkdir -p $OUTDIR/{data['name']} && echo draft > $OUTDIR/{data['name']}/draft.txt"
     return data
 
 

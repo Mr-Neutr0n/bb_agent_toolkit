@@ -19,13 +19,13 @@ Post-processing that enriches verified findings with report drafts, proof-of-con
 ## Available Workflows
 | Workflow | Purpose | Script paths | Primary outputs | Evidence |
 | --- | --- | --- | --- | --- |
-| `enrich` | Run a post-script on the next unenriched finding | `.claude/skills/enrichment/scripts/enrich.py` | `.bb/enrichments.jsonl` | `$OUTDIR/enrichment/evidence/` |
-| `supplemental` | Re-run a post-script on a previously enriched finding (additive) | `.claude/skills/enrichment/scripts/enrich.py` | `.bb/enrichments.jsonl` | `$OUTDIR/enrichment/evidence/` |
+| `enrich` | Run a post-script on the next unenriched finding | `.claude/skills/enrichment/scripts/enrich.py` | `$OUTDIR/enrichment/enrichments.jsonl` | `$OUTDIR/enrichment/evidence/` |
+| `supplemental` | Re-run a post-script on a previously enriched finding (additive) | `.claude/skills/enrichment/scripts/enrich.py` | `$OUTDIR/enrichment/enrichments.jsonl` | `$OUTDIR/enrichment/evidence/` |
 | `list-enrichments` | List enrichments and their status | `.claude/skills/enrichment/scripts/list_enrichments.py` | stdout | — |
 
 ## Evidence Required
 - Store the finding's original `bounty_rank` and `vulnerability_type` alongside the enrichment
-- Keep `post_script` name, prompt template, and output JSON in `.bb/enrichments.jsonl`
+- Keep `post_script` name, prompt template, and output JSON in `$OUTDIR/enrichment/enrichments.jsonl` (and `.bb/enrichments.jsonl` if you use that path via symlink)
 - `_reserved_report` output is markdown for the report tab; `_reserved_poc` is a git diff for the PoC tab; `_chip_*` outputs are short tags aggregated from all enrichments
 - Redact tokens and PII before sharing enrichments; evidence stays local-only
 
