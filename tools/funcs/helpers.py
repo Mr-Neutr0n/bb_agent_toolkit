@@ -20,17 +20,19 @@ Functions:
 
 import argparse
 import base64
+import ipaddress
 import json
 import re
+import secrets
+import socket
+import string
 import subprocess
 import sys
+import time
+import urllib.parse
+import urllib.request
 import uuid
 from pathlib import Path
-import time
-import secrets
-import string
-import ipaddress
-import urllib.parse
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_PATTERN_LEN = 200
@@ -79,17 +81,17 @@ def file_length(path: str) -> int:
 
 def grep_regex(pattern: str, input_file: str, output_file: str):
     if len(pattern) > MAX_PATTERN_LEN:
-        print(f"ERROR: pattern too long", file=sys.stderr)
+        print("ERROR: pattern too long", file=sys.stderr)
         sys.exit(1)
     # Reject nested quantifiers that could cause ReDoS
     if re.search(r"(\+|\*|\{.*\}).*(\+|\*|\{.*\})", pattern):
         # Simple heuristic: if pattern has two quantifiers, check for catastrophic backtracking
         if "(a+)+" in pattern or ".*" in pattern and "+" in pattern:
-            print(f"WARN: pattern may cause ReDoS, proceeding with caution", file=sys.stderr)
+            print("WARN: pattern may cause ReDoS, proceeding with caution", file=sys.stderr)
     regex = re.compile(pattern)
     # Size checks
     if Path(input_file).stat().st_size > MAX_FILE_BYTES:
-        print(f"ERROR: input too large", file=sys.stderr)
+        print("ERROR: input too large", file=sys.stderr)
         sys.exit(1)
     with open(input_file, encoding="utf-8", errors="replace") as fin, open(output_file, "w", encoding="utf-8") as fout:
         for line in fin:
@@ -105,8 +107,6 @@ def http_get(url: str, timeout: int = 10) -> dict:
     try:
         host = parsed.hostname
         if host:
-            # Try to resolve and check if private
-            import socket
             try:
                 ip = socket.gethostbyname(host)
                 ip_obj = ipaddress.ip_address(ip)
@@ -118,7 +118,6 @@ def http_get(url: str, timeout: int = 10) -> dict:
                 pass
     except Exception:
         pass
-    import urllib.request
     req = urllib.request.Request(url, headers={"User-Agent": "BountyHarness/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -136,7 +135,7 @@ def nmap_to_jsonl(input_path: str, output_path: str):
     except ImportError:
         import xml.etree.ElementTree as ET
     if Path(input_path).stat().st_size > MAX_FILE_BYTES:
-        print(f"ERROR: input too large", file=sys.stderr)
+        print("ERROR: input too large", file=sys.stderr)
         sys.exit(1)
     tree = ET.parse(input_path)
     with open(output_path, "w", encoding="utf-8") as out:
@@ -153,7 +152,7 @@ def nmap_to_jsonl(input_path: str, output_path: str):
 def db_import_sarif(workspace: str, sarif_file: str) -> dict:
     p = Path(sarif_file)
     if p.stat().st_size > MAX_FILE_BYTES:
-        print(f"ERROR: SARIF too large", file=sys.stderr)
+        print("ERROR: SARIF too large", file=sys.stderr)
         sys.exit(1)
     data = json.loads(p.read_text(encoding="utf-8"))
     counts = {"high": 0, "medium": 0, "low": 0, "info": 0}
