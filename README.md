@@ -80,14 +80,14 @@ The formula lives in the [homebrew-bounty-harness](https://github.com/Mr-Neutr0n
 
 ```bash
 bb-init example.com --program example --scope-file scope.txt
-bb-run list                          # see all 47 skills
+bb-run list                          # see all 48 skills
 bb-run recon list                    # see a skill's workflows
 bb-hunt https://example.com --time-budget 1h   # autonomous campaign
 ```
 
 ## Highlights
 
-- **47 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, CI/CD, GraphQL, web3, identity infrastructure, reporting, and more.
+- **48 skill packages** covering recon, XSS, SQLi, SSRF, RCE, auth, API, file upload, CORS/CSRF, race conditions, cloud, mobile, LLM security, HTTP protocol bugs, CI/CD, GraphQL, web3, identity infrastructure, reporting, and more.
 - **Autonomous campaigns** with `bin/bb-hunt`: context init, recon, domain modeling, technique matching, planning, priority-ordered execution, and reporting from one URL.
 - **Thin harness, fat skills**: the harness dispatches; the skills contain the security logic.
 - **Tool registry** for install, health checks, version locking, capability mapping, and risk tiers across 99 external tools.
@@ -200,6 +200,7 @@ bin/bb-run campaign status
 | 45 | `identity-domain` | No-creds identity infra recon: NTLM leaks, ADCS/ADFS endpoints, Entra tenant metadata, SPN OSINT. |
 | 46 | `binary-analysis` | Desktop/native binary triage and MCP-driven x64dbg dynamic analysis for shipped executables. |
 | 47 | `enrichment` | Post-processing enrichment for verified findings — report drafts, PoC diffs, and triage chips (Kritt-style post-scripts with supplemental re-runs). |
+| 48 | `sast` | SAST integration with SARIF parsing (Semgrep, Trivy, Bearer) | | Post-processing enrichment for verified findings — report drafts, PoC diffs, and triage chips (Kritt-style post-scripts with supplemental re-runs). |
 
 Grouped by area:
 
