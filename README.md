@@ -7,6 +7,8 @@
 
 **BountyHarness** is an open-source agent harness for authorized bug bounty and application security research.
 
+> **Site:** [bounty-harness-site.vercel.app](https://bounty-harness-site.vercel.app) · **Docs:** [bounty-harness-site.vercel.app/docs.html](https://bounty-harness-site.vercel.app/docs.html)
+
 It gives security agents a disciplined operating model: a thin command harness for context, scope, tools, and execution, plus fat skill packages that hold the actual workflows, scripts, runbooks, payloads, evidence rules, and reporting guidance.
 
 Use it only on systems you own or are explicitly authorized to test.

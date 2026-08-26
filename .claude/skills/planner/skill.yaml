@@ -167,6 +167,25 @@ workflows:
       if_findings: null
       if_no_findings: null
 
+  import-workflow:
+    description: "Import portable workflow JSON (open-kritt-workflow v2) into a playbook YAML"
+    inputs: [OUTDIR]
+    command: |
+      mkdir -p $OUTDIR/planner && \
+      python3 tools/import_workflow.py --input "${WORKFLOW_JSON:?Set WORKFLOW_JSON}" --output "${PLAYBOOK_OUT:-$OUTDIR/planner/imported_playbook.yaml}" ${WORKFLOW_NAME:+--name "$WORKFLOW_NAME"}
+    outputs:
+      - $OUTDIR/planner/imported_playbook.yaml
+    evidence_dir: $OUTDIR/planner
+    safety_tier: passive
+    detection_signals:
+      - "playbook YAML written with phases mapped from workflow levels"
+      - "source kind and version preserved in playbook header"
+    false_positives:
+      - "imported playbook may reference skills not present locally"
+    next:
+      if_findings: validate-playbook
+      if_no_findings: validate-playbook
+
 evidence_templates:
   plan_json: "Ranked test plan with scores, rationales, safety flags, and evidence requirements per plan item — saved to $OUTDIR/planner/plan.json"
   plan_markdown: "Human-readable visualization of the ranked plan for review before execution — saved to $OUTDIR/planner/plan.md"

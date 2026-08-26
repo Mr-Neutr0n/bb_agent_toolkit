@@ -27,12 +27,16 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 | `platform-export` | Render platform-specific report (HackerOne, Bugcrowd, generic) | `.claude/skills/reporting/scripts/platform_templates.py` | `$OUTDIR/reports/report_<platform>.md` | `$OUTDIR/reports/evidence/` |
 | `quality-check` | Gate report for submission readiness (sections, placeholders, secret leaks, evidence) | `.claude/skills/reporting/scripts/quality_gate.py` | `$OUTDIR/reports/quality_report.json` | `$OUTDIR/reports/evidence/` |
 | `estimate-bounty` | Estimate bounty range from severity, vuln class, program tier | `.claude/skills/reporting/scripts/bounty_estimator.py` | `$OUTDIR/reports/bounty_estimate.json` | `$OUTDIR/reports/evidence/` |
+| `export-bundle` | Package findings into share-safe ZIP with manifest (complete vs partial) | `.claude/skills/reporting/scripts/export_bundle.py` | `$OUTDIR/reports/bundle.zip` | `$OUTDIR/reports/evidence/` |
+| `rank-findings` | Re-rank findings by bounty impact using markdown ranker | `.claude/skills/reporting/scripts/rank_findings.py` | `$OUTDIR/reports/ranked.jsonl` | `$OUTDIR/reports/evidence/` |
 
 ## Workflow Selection
-- Standard chain: `generate-single` → `cvss-score` → `platform-export` → `quality-check` → `estimate-bounty`.
+- Standard chain: `generate-single` → `cvss-score` → `platform-export` → `quality-check` → `estimate-bounty` → `export-bundle` → `rank-findings`.
 - Never submit a report that failed `quality-check` with errors; warnings are advisory.
 - Set `PLATFORM=hackerone|bugcrowd|generic`, `PROGRAM_TIER=top|established|standard|small|vdp`,
   and optionally `SEVERITY`, `VULN_TYPE`, `IMPACT_CLASS` in the RunContext before running.
+- `export-bundle` produces a share-safe ZIP (see `manifest.json` kind complete vs partial). Do not render PoC fields as HTML.
+- `rank-findings` re-ranks by markdown policy (`payloads/severity_ranker_default.md`); heuristic is local, `--llm` sends titles to OpenAI.
 
 ## Evidence Required
 - Save raw request and response data for each confirmed finding.
@@ -45,6 +49,8 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 - `evidence_package`: Tar.gz with evidence + reports
 - `quality_gate`: Checklist results with errors, warnings, and pass verdict
 - `bounty_estimate`: Estimated USD range with inputs and disclaimer
+- `export_bundle`: ZIP with manifest.json, findings.json, reports and evidence (share-safe)
+- `ranked_findings`: Findings reordered by `bounty_rank` with severity counts
 
 ## Quality Gate Rules
 The `quality-check` workflow blocks submission on: missing summary/steps/PoC/impact sections,
