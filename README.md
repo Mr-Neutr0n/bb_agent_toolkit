@@ -72,10 +72,9 @@ The installer verifies python3 >= 3.11 + PyYAML + git (printing exact fixes for 
 
 ```bash
 brew install mr-neutr0n/bounty-harness/bounty-harness
-# or: brew tap mr-neutr0n/bounty-harness && brew install bounty-harness
 ```
 
-The formula lives in [homebrew-bounty-harness](https://github.com/Mr-Neutr0n/homebrew-bounty-harness); pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically. Old `homebrew-tap` URLs still redirect.
+The formula lives in the [homebrew-bounty-harness](https://github.com/Mr-Neutr0n/homebrew-bounty-harness) repo; pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically.
 
 ## Quick Start
 
