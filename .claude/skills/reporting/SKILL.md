@@ -31,10 +31,12 @@ This is a thin human-facing router. Use `skill.yaml` as the source of truth for 
 | `rank-findings` | Re-rank findings by bounty impact using markdown ranker | `.claude/skills/reporting/scripts/rank_findings.py` | `$OUTDIR/reports/ranked.jsonl` | `$OUTDIR/reports/evidence/` |
 
 ## Workflow Selection
-- Standard chain: `generate-single` → `cvss-score` → `platform-export` → `quality-check` → `estimate-bounty`.
+- Standard chain: `generate-single` → `cvss-score` → `platform-export` → `quality-check` → `estimate-bounty` → `export-bundle` → `rank-findings`.
 - Never submit a report that failed `quality-check` with errors; warnings are advisory.
 - Set `PLATFORM=hackerone|bugcrowd|generic`, `PROGRAM_TIER=top|established|standard|small|vdp`,
   and optionally `SEVERITY`, `VULN_TYPE`, `IMPACT_CLASS` in the RunContext before running.
+- `export-bundle` produces a share-safe ZIP (see `manifest.json` kind complete vs partial). Do not render PoC fields as HTML.
+- `rank-findings` re-ranks by markdown policy (`payloads/severity_ranker_default.md`); heuristic is local, `--llm` sends titles to OpenAI.
 
 ## Evidence Required
 - Save raw request and response data for each confirmed finding.

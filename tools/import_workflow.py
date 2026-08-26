@@ -16,11 +16,17 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
 import yaml
+
+MAX_LEVELS = 20
+MAX_STEPS_PER_LEVEL = 100
+MAX_TOTAL_STEPS = 500
+MAX_PROMPT_LEN = 2000
 
 
 def now_iso() -> str:
@@ -35,6 +41,15 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def sanitize_id(name: str) -> str:
+    """Make id safe for filesystem: only a-z0-9-, no traversal."""
+    safe = re.sub(r"[^a-z0-9-]", "-", name.lower())
+    safe = re.sub(r"-+", "-", safe).strip("-")[:40] or "imported-workflow"
+    if not re.match(r"^[a-z0-9-]{1,40}$", safe):
+        safe = "imported-workflow"
+    return safe
+
+
 def normalize_workflow(data: dict) -> tuple[str, list[dict], dict | None]:
     """Returns (name, levels, meta). Handles v2 levels, v1 steps, and raw workflow."""
     # Direct workflow object
@@ -42,14 +57,22 @@ def normalize_workflow(data: dict) -> tuple[str, list[dict], dict | None]:
         wf = data["workflow"]
         name = wf.get("name", "imported-workflow")
         if "levels" in wf:
-            return name, wf["levels"], wf
+            levels = wf["levels"]
+            if not isinstance(levels, list):
+                raise ValueError("workflow.levels must be a list")
+            return name, levels, wf
         if "steps" in wf:
-            # v1 flat steps -> single level
-            return name, [{"depth": 0, "steps": wf["steps"], "outputFormat": wf.get("outputFormat", {})}], wf
+            steps = wf["steps"]
+            if not isinstance(steps, list):
+                raise ValueError("workflow.steps must be a list")
+            return name, [{"depth": 0, "steps": steps, "outputFormat": wf.get("outputFormat", {})}], wf
 
     # Top-level levels
     if "levels" in data:
-        return data.get("name", "imported-workflow"), data["levels"], data
+        levels = data["levels"]
+        if not isinstance(levels, list):
+            raise ValueError("levels must be a list")
+        return data.get("name", "imported-workflow"), levels, data
 
     # Flat steps
     if "steps" in data and isinstance(data["steps"], list):
@@ -59,23 +82,32 @@ def normalize_workflow(data: dict) -> tuple[str, list[dict], dict | None]:
 
 
 def map_depth_to_phase(depth: int, steps: list[dict], output_format: dict | None) -> dict:
-    is_last = False
-    # Heuristic: last depth is one that would have isLastStep in Kritt terms
-    # We cannot know globally; caller passes max_depth context.
-    return {
-        "id": f"depth-{depth}",
-        "name": f"Imported depth {depth} ({len(steps)} step(s))",
-        "safety_tier": "passive",
-        "steps": [
+    mapped = []
+    for i, s in enumerate(steps):
+        if not isinstance(s, dict):
+            log(f"WARN: step {i} at depth {depth} is not an object, skipping")
+            continue
+        raw_prompt = s.get("content", s.get("prompt", ""))
+        if not isinstance(raw_prompt, str):
+            raw_prompt = str(raw_prompt)
+        prompt = raw_prompt[:MAX_PROMPT_LEN]
+        if len(raw_prompt) > MAX_PROMPT_LEN:
+            log(f"WARN: truncated prompt at depth {depth} step {i} from {len(raw_prompt)} to {MAX_PROMPT_LEN}")
+            prompt = prompt + "..."
+        mapped.append(
             {
                 "id": f"depth-{depth}-step-{i}",
                 "skill": "auto-research",
                 "workflow": "import-candidate",
-                "inputs": {"prompt": s.get("content", s.get("prompt", ""))[:500]},
+                "inputs": {"prompt": prompt},
                 "outputs": output_format or {},
             }
-            for i, s in enumerate(steps)
-        ],
+        )
+    return {
+        "id": f"depth-{depth}",
+        "name": f"Imported depth {depth} ({len(mapped)} step(s))",
+        "safety_tier": "passive",
+        "steps": mapped,
     }
 
 
@@ -84,15 +116,21 @@ def convert(data: dict, name_override: str | None = None) -> dict:
     if name_override:
         name = name_override
 
+    if len(levels) > MAX_LEVELS:
+        raise ValueError(f"Too many levels: {len(levels)} > {MAX_LEVELS}")
+    total_steps = sum(len(lvl.get("steps", [])) for lvl in levels if isinstance(lvl, dict))
+    if total_steps > MAX_TOTAL_STEPS:
+        raise ValueError(f"Too many total steps: {total_steps} > {MAX_TOTAL_STEPS}")
+
     # Determine max depth to mark terminal
-    depths = [lvl.get("depth", i) for i, lvl in enumerate(levels)]
+    depths = [lvl.get("depth", i) if isinstance(lvl, dict) else i for i, lvl in enumerate(levels)]
     max_depth = max(depths) if depths else 0
 
     playbook = {
-        "id": name.lower().replace(" ", "-").replace("_", "-")[:40],
+        "id": sanitize_id(name),
         "version": "1.0",
         "name": name,
-        "description": meta.get("description", f"Imported from open-kritt workflow: {name}") if meta else f"Imported workflow: {name}",
+        "description": (meta.get("description", f"Imported from open-kritt workflow: {name}") if isinstance(meta, dict) else f"Imported workflow: {name}"),
         "source": {
             "kind": data.get("kind", "unknown"),
             "version": data.get("version", 1),
@@ -101,13 +139,31 @@ def convert(data: dict, name_override: str | None = None) -> dict:
         "phases": [],
     }
 
-    for lvl in sorted(levels, key=lambda x: x.get("depth", 0)):
+    seen_ids: set[str] = set()
+    for lvl in sorted(levels, key=lambda x: x.get("depth", 0) if isinstance(x, dict) else 0):
+        if not isinstance(lvl, dict):
+            log(f"WARN: level is not an object, skipping: {lvl}")
+            continue
         depth = lvl.get("depth", 0)
         steps = lvl.get("steps", [])
+        if not isinstance(steps, list):
+            raise ValueError(f"steps at depth {depth} must be a list")
+        if len(steps) > MAX_STEPS_PER_LEVEL:
+            raise ValueError(f"Too many steps at depth {depth}: {len(steps)} > {MAX_STEPS_PER_LEVEL}")
         output_format = lvl.get("outputFormat", lvl.get("output_format", {}))
+        if output_format is not None and not isinstance(output_format, dict):
+            raise ValueError(f"outputFormat at depth {depth} must be an object")
         phase = map_depth_to_phase(depth, steps, output_format)
+        # dedupe phase id if duplicate depth values exist
+        base_id = phase["id"]
+        suffix = 0
+        while phase["id"] in seen_ids:
+            suffix += 1
+            phase["id"] = f"{base_id}-{suffix}"
+        seen_ids.add(phase["id"])
         if depth == max_depth:
             phase["name"] += " [terminal]"
+            phase["terminal"] = True
         playbook["phases"].append(phase)
 
     return playbook
