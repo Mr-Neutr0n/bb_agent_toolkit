@@ -200,7 +200,7 @@ bin/bb-run campaign status
 | 45 | `identity-domain` | No-creds identity infra recon: NTLM leaks, ADCS/ADFS endpoints, Entra tenant metadata, SPN OSINT. |
 | 46 | `binary-analysis` | Desktop/native binary triage and MCP-driven x64dbg dynamic analysis for shipped executables. |
 | 47 | `enrichment` | Post-processing enrichment for verified findings — report drafts, PoC diffs, and triage chips (Kritt-style post-scripts with supplemental re-runs). |
-| 48 | `sast` | SAST integration with SARIF parsing (Semgrep, Trivy, Bearer) | | Post-processing enrichment for verified findings — report drafts, PoC diffs, and triage chips (Kritt-style post-scripts with supplemental re-runs). |
+| 48 | `sast` | SAST integration with SARIF parsing (Semgrep, Trivy, Bearer) |
 
 Grouped by area:
 
