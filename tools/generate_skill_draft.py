@@ -74,7 +74,12 @@ def llm_draft(request: str) -> dict:
     import os
 
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    system = "You are a BountyHarness skill designer. Output JSON matching the skill schema: name (kebab-case), version, description, bounded_context, safety_tier passive/active-safe, 1-2 workflows with command using $OUTDIR, evidence_dir. Only output JSON."
+    system = (
+        "You are a BountyHarness skill designer. Output JSON matching the skill "
+        "schema: name (kebab-case), version, description, bounded_context, "
+        "safety_tier passive/active-safe, 1-2 workflows with command using "
+        "$OUTDIR, evidence_dir. Only output JSON."
+    )
     resp = client.chat.completions.create(
         model=os.environ.get("DRAFT_MODEL", "gpt-4o-mini"),
         messages=[{"role": "system", "content": system}, {"role": "user", "content": request[:2000]}],
