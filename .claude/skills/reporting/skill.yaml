@@ -118,6 +118,46 @@ workflows:
     false_positives:
       - "estimates are heuristic; program tables decide actual payouts"
     next:
+      if_findings: export-bundle
+      if_no_findings: export-bundle
+
+  export-bundle:
+    description: Package findings into a share-safe ZIP with manifest (complete vs partial)
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/reports && \
+      python3 .claude/skills/reporting/scripts/export_bundle.py --outdir "$OUTDIR" --output "$OUTDIR/reports/bundle.zip" ${PARTIAL_REASON:+--partial-reason "$PARTIAL_REASON"}
+    outputs:
+      - $OUTDIR/reports/bundle.zip
+    evidence_dir: $OUTDIR/reports/evidence/
+    detection_signals:
+      - "bundle ZIP with manifest.json and findings.json"
+      - "PARTIAL.txt present when input was stopped or empty"
+    false_positives: []
+    next:
+      if_findings: rank-findings
+      if_no_findings: rank-findings
+
+  rank-findings:
+    description: Re-rank findings by bounty impact using a composable markdown ranker (Kritt-style)
+    safety_tier: passive
+    inputs: [OUTDIR, CONTEXT]
+    command: |
+      mkdir -p $OUTDIR/reports && \
+      python3 .claude/skills/reporting/scripts/rank_findings.py \
+        --findings "${RANK_FINDINGS:-$OUTDIR/impact-verifier/verified.jsonl}" \
+        --ranker "${RANKER_FILE:-.claude/skills/reporting/payloads/severity_ranker_default.md}" \
+        ${RANK_LLM:+--llm} \
+        --output "$OUTDIR/reports/ranked.jsonl"
+    outputs:
+      - $OUTDIR/reports/ranked.jsonl
+    evidence_dir: $OUTDIR/reports/evidence/
+    detection_signals:
+      - "findings reordered by bounty_rank with counts per severity"
+    false_positives:
+      - "heuristic ranking without LLM may mis-rank novel vuln types"
+    next:
       if_findings: null
       if_no_findings: null
 

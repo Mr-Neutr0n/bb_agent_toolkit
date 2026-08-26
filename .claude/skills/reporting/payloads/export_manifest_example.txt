@@ -1,0 +1,14 @@
+{
+  "bundle_kind": "complete | partial",
+  "toolkit": "bounty-harness",
+  "version": "3.1.x",
+  "exported_at": "2026-08-24T00:00:00Z",
+  "target": "example.com",
+  "program": "example",
+  "findings_count": 2,
+  "findings_summary": [
+    {"title": "Stored XSS via profile bio", "severity": "high", "type": "xss"},
+    {"title": "IDOR on /api/v1/users/1337", "severity": "high", "type": "idor"}
+  ],
+  "share_safe_note": "PoC and report source fields are plain text; do not render as HTML without sanitization."
+}

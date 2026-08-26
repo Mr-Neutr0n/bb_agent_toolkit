@@ -50,6 +50,7 @@ User provides target + wants a plan
 | `generate-plan-safe` | Generate plan excluding intrusive and destructive techniques | `.claude/skills/planner/scripts/generate_plan.py` | Plan JSON file |
 | `visualize-plan` | Convert plan JSON to readable markdown or HTML | `.claude/skills/planner/scripts/plan_visualizer.py` | Markdown or HTML file |
 | `validate-plan` | Validate plan JSON against plan_schema.yaml for structural correctness | `.claude/skills/planner/scripts/plan_validator.py` | Validation report (stdout) |
+| `import-workflow` | Import portable `open-kritt-workflow` v2 JSON into a playbook YAML | `tools/import_workflow.py` | Playbook YAML file |
 
 ## Runbooks
 
