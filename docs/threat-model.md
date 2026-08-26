@@ -62,7 +62,7 @@ to an LLM go through `agent-safety` checks.
 Some workflows ( `ai-llm`, `auto-research`, `vuln-intel`, `reporting/rank-findings --llm` ) send evidence or prompts
 to external model providers if you configure keys (`~/.secrets/*.env` mode 600).
 This is a **data-egress boundary**. `rank-findings --llm` sends finding titles to `api.openai.com` when enabled; heuristic ranking is local.
-`tools/import_workflow.py` parses externally-sourced JSON (e.g., `open-kritt-workflow` exports) — attacker-controlled `name` and `content` fields are sanitized and size-capped (2MB, 500 levels) before conversion.
+`tools/import_workflow.py` parses externally-sourced JSON (e.g., `open-kritt-workflow` exports) — attacker-controlled `name` and `content` fields are sanitized and size-capped (2MB, 20 levels / 500 total steps) before conversion.
 Know where evidence goes before enabling those skills. The default local workflows (recon, sqli, xss, etc.) send nothing
 externally except traffic to the target itself and to public data sources
 (CT logs, DNS) when involved.

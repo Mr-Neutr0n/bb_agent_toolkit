@@ -200,12 +200,13 @@ if command_words & {"nuclei", "ffuf", "dalfox", "katana"} and not os.environ.get
 PY
 
 # Substitute longest variable names first so $TARGET_URL is not partially
-# rewritten as ${TARGET}_URL.
-WF_CMD="${WF_CMD//\$EVIDENCE_DIR/$EVIDENCE_DIR}"
-WF_CMD="${WF_CMD//\$TARGET_URL/$TARGET_URL}"
-WF_CMD="${WF_CMD//\$TARGET_HOST/${TARGET_HOST:-$TARGET}}"
-WF_CMD="${WF_CMD//\$OUTDIR/$OUTDIR}"
-WF_CMD="${WF_CMD//\$TARGET/$TARGET}"
+# rewritten as ${TARGET}_URL. Values are shell-quoted to prevent injection
+# if OUTDIR/TARGET contain metachars (see docs/threat-model.md §2).
+WF_CMD="${WF_CMD//\$EVIDENCE_DIR/$(printf %q "$EVIDENCE_DIR")}"
+WF_CMD="${WF_CMD//\$TARGET_URL/$(printf %q "$TARGET_URL")}"
+WF_CMD="${WF_CMD//\$TARGET_HOST/$(printf %q "${TARGET_HOST:-$TARGET}")}"
+WF_CMD="${WF_CMD//\$OUTDIR/$(printf %q "$OUTDIR")}"
+WF_CMD="${WF_CMD//\$TARGET/$(printf %q "$TARGET")}"
 
 STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 TARGET_HASH=$(echo -n "${TARGET:-}" | shasum -a 256 | cut -d' ' -f1)
