@@ -154,6 +154,23 @@ for name in data.get('workflows', {}) or {}:
   exit 1
 fi
 
+# Execute pre_steps hooks if defined in skill.yaml
+HOOKS_PRE=$(python3 -c "
+import yaml
+with open('${SCRIPT_DIR}/skill.yaml') as f:
+    data = yaml.safe_load(f)
+hooks = (data.get('hooks') or {}).get('pre_steps') or []
+for h in hooks:
+    print(h)
+" 2>/dev/null)
+if [ -n "$HOOKS_PRE" ]; then
+  while IFS= read -r hook_cmd; do
+    [ -z "$hook_cmd" ] && continue
+    echo "=== Pre-hook: $hook_cmd ==="
+    eval "$hook_cmd" || echo "WARNING: pre-hook failed: $hook_cmd"
+  done <<< "$HOOKS_PRE"
+fi
+
 # Preflight checks
 python3 - "$WF_CMD" "${SCRIPT_DIR}" "${SKILL}" "${WORKFLOW}" <<'PY'
 import os, re, shlex, shutil, sys, glob, yaml
@@ -257,6 +274,23 @@ set +e
 eval "$WF_CMD"
 EXIT_CODE=$?
 set -e
+
+# Execute post_steps hooks if defined
+HOOKS_POST=$(python3 -c "
+import yaml
+with open('${SCRIPT_DIR}/skill.yaml') as f:
+    data = yaml.safe_load(f)
+hooks = (data.get('hooks') or {}).get('post_steps') or []
+for h in hooks:
+    print(h)
+" 2>/dev/null)
+if [ -n "$HOOKS_POST" ]; then
+  while IFS= read -r hook_cmd; do
+    [ -z "$hook_cmd" ] && continue
+    echo "=== Post-hook: $hook_cmd ==="
+    eval "$hook_cmd" || echo "WARNING: post-hook failed: $hook_cmd"
+  done <<< "$HOOKS_POST"
+fi
 
 ENDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 S_SECS=$(python3 -c "import datetime,sys; d=datetime.datetime.strptime(sys.argv[1],'%Y-%m-%dT%H:%M:%SZ'); print(int(d.timestamp()*1000))" "$STARTED_AT")

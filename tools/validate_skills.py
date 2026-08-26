@@ -639,6 +639,98 @@ def check_skill(skill_path, schemas=None, tool_registry=None, technique_skills=N
                 add_issue("warning", "missing_workflow_runbook", f"Workflow '{wf_name}' has no matching runbook", str(runbooks_dir))
         add_check("PASS: all workflow runbook links verified")
 
+    # --- OSMEDEUS-INSPIRED LINTER RULES ---
+    if yaml_data:
+        workflows = yaml_data.get("workflows", {}) or {}
+        # duplicate-step-name
+        wf_names = list(workflows.keys())
+        if len(wf_names) != len(set(wf_names)):
+            add_check("FAIL: duplicate workflow names")
+            report["deductions"].append("Duplicate workflow names")
+            deduct_ss("workflows", 2)
+            add_issue("warning", "duplicate_step_name", "Duplicate workflow names found", str(skill_yaml))
+        else:
+            add_check("PASS: no duplicate workflow names")
+        # empty-step
+        empty_steps = [n for n, w in workflows.items() if not str(w.get("command", "")).strip()]
+        if empty_steps:
+            for n in empty_steps:
+                add_check(f"FAIL: {n} has empty command")
+                report["deductions"].append(f"Empty step: {n}")
+                deduct_ss("workflows", 1)
+                add_issue("warning", "empty_step", f"Workflow '{n}' has empty command", str(skill_yaml))
+        else:
+            add_check("PASS: no empty steps")
+        # invalid-goto and circular-dependency via next links
+        wf_set = set(workflows.keys())
+        graph: dict[str, list[str]] = {}
+        for n, w in workflows.items():
+            nxt = w.get("next", {}) or {}
+            targets = []
+            for key in ("if_findings", "if_no_findings"):
+                tgt = nxt.get(key)
+                if tgt and tgt not in wf_set and tgt != "null":
+                    add_check(f"FAIL: {n} next.{key}='{tgt}' not a valid workflow")
+                    report["deductions"].append(f"Invalid goto: {n} -> {tgt}")
+                    deduct_ss("workflows", 1)
+                    add_issue("warning", "invalid_goto", f"Workflow '{n}' goto '{tgt}' invalid", str(skill_yaml))
+                elif tgt and tgt in wf_set:
+                    targets.append(tgt)
+            graph[n] = targets
+        # circular-dependency DFS
+        visited: set[str] = set()
+        rec_stack: set[str] = set()
+        has_cycle = False
+
+        def dfs(node: str) -> bool:
+            visited.add(node)
+            rec_stack.add(node)
+            for nb in graph.get(node, []):
+                if nb not in visited:
+                    if dfs(nb):
+                        return True
+                elif nb in rec_stack:
+                    return True
+            rec_stack.remove(node)
+            return False
+
+        for node in wf_set:
+            if node not in visited:
+                if dfs(node):
+                    has_cycle = True
+                    break
+        if has_cycle:
+            add_check("FAIL: circular dependency detected in next links")
+            report["deductions"].append("Circular dependency in workflows")
+            deduct_ss("workflows", 2)
+            add_issue("warning", "circular_dependency", "Circular next links detected", str(skill_yaml))
+        else:
+            add_check("PASS: no circular dependencies")
+        # undefined-variable: check {{var}} in commands against known inputs + built-ins
+        import re as _re
+
+        var_re = _re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}")
+        builtins = {"TARGET", "OUTDIR", "PROGRAM", "EVIDENCE_DIR", "SCOPE_FILE", "TARGET_URL", "TARGET_HOST"}
+        for n, w in workflows.items():
+            cmd = str(w.get("command", ""))
+            for var in var_re.findall(cmd):
+                if var not in builtins and var not in (w.get("inputs") or []):
+                    # allow extra known vars like RATE_LIMIT, etc.
+                    if var not in {"RATE_LIMIT", "CONCURRENCY", "USER_AGENT", "AUTH_HEADER", "COOKIE_JAR"}:
+                        add_check(f"WARN: {n} uses undefined variable {{{{{var}}}}}")
+                        report["deductions"].append(f"Undefined variable in {n}: {var}")
+                        deduct_ss("workflows", 1)
+                        add_issue("warning", "undefined_variable", f"Workflow '{n}' uses undefined {{{{{var}}}}}", str(skill_yaml))
+                        break
+        # unused-variable: inputs never referenced in command
+        for n, w in workflows.items():
+            inputs = w.get("inputs") or []
+            cmd = str(w.get("command", ""))
+            for inp in inputs:
+                if inp not in cmd and "{{" + inp + "}}" not in cmd and f"${inp}" not in cmd:
+                    add_check(f"INFO: {n} input '{inp}' unused in command")
+                    # info only, no deduction
+
     # --- FINALIZE SUBSORES ---
     report["subscores"] = {
         "metadata_schema": meta_score,
