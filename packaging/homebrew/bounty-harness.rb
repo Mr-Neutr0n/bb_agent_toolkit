@@ -1,7 +1,8 @@
 # Homebrew formula for BountyHarness.
 #
-# Intended tap layout (future): Mr-Neutr0n/homebrew-tap, then:
-#   brew install Mr-Neutr0n/tap/bounty-harness
+# Tap: Mr-Neutr0n/homebrew-bounty-harness
+#   brew install Mr-Neutr0n/bounty-harness/bounty-harness
+#   (also: brew tap Mr-Neutr0n/bounty-harness && brew install bounty-harness)
 #
 # RELEASE CHECKLIST (maintainer):
 #   1. Bump VERSION file and this formula's version to the same value.
