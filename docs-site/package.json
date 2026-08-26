@@ -1,0 +1,6 @@
+{
+  "name": "bounty-harness-docs",
+  "private": true,
+  "scripts": { "dev": "mint dev", "build": "mint build" },
+  "devDependencies": { "mint": "^4.0.0" }
+}
