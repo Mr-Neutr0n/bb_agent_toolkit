@@ -7,6 +7,8 @@
 
 **BountyHarness** is an open-source agent harness for authorized bug bounty and application security research.
 
+> **Site:** [bounty-harness-site.vercel.app](https://bounty-harness-site.vercel.app) · **Docs:** [bounty-harness-site.vercel.app/docs.html](https://bounty-harness-site.vercel.app/docs.html)
+
 It gives security agents a disciplined operating model: a thin command harness for context, scope, tools, and execution, plus fat skill packages that hold the actual workflows, scripts, runbooks, payloads, evidence rules, and reporting guidance.
 
 Use it only on systems you own or are explicitly authorized to test.
@@ -69,10 +71,11 @@ The installer verifies python3 >= 3.11 + PyYAML + git (printing exact fixes for 
 ### Homebrew
 
 ```bash
-brew install mr-neutr0n/tap/bounty-harness
+brew install mr-neutr0n/bounty-harness/bounty-harness
+# or: brew tap mr-neutr0n/bounty-harness && brew install bounty-harness
 ```
 
-The formula lives in the [homebrew-tap](https://github.com/Mr-Neutr0n/homebrew-tap) repo; pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically.
+The formula lives in [homebrew-bounty-harness](https://github.com/Mr-Neutr0n/homebrew-bounty-harness); pushing a `v*` tag to the main repo builds the release archive and its sha256 automatically. Old `homebrew-tap` URLs still redirect.
 
 ## Quick Start
 
