@@ -6,12 +6,12 @@ target responses.
 """
 
 import argparse
+import atexit
 import hashlib
 import json
 import os
 import sqlite3
 import sys
-import atexit
 import time
 import uuid
 

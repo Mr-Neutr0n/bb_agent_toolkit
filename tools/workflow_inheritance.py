@@ -16,17 +16,20 @@ Usage:
 import argparse
 import sys
 from pathlib import Path
+
 import yaml
 
 
 def _safe_skill_path(name: str) -> Path:
     import re
     if not re.match(r"^[a-z0-9_-]{1,64}$", name):
-        print(f"ERROR: invalid skill name: {name}", file=sys.stderr); sys.exit(1)
+        print(f"ERROR: invalid skill name: {name}", file=sys.stderr)
+        sys.exit(1)
     p = (Path(".claude/skills") / name / "skill.yaml").resolve()
     root = Path(".claude/skills").resolve()
     if not p.is_relative_to(root):
-        print("ERROR: skill path escapes", file=sys.stderr); sys.exit(1)
+        print("ERROR: skill path escapes", file=sys.stderr)
+        sys.exit(1)
     return p
 
 def load_skill(skill_name: str) -> dict:

@@ -13,8 +13,9 @@ import argparse
 import hashlib
 import json
 import re
-from pathlib import Path
+import sys
 from collections import OrderedDict
+from pathlib import Path
 
 CACHE_SIZE = 64
 SHARDS = 16
@@ -82,7 +83,7 @@ def main():
     p_render.add_argument("--vars", required=True, help="JSON dict of variables")
     p_render.add_argument("--output", help="Output file")
 
-    p_clear = sub.add_parser("clear", help="Clear cache")
+    sub.add_parser("clear", help="Clear cache")
 
     args = parser.parse_args()
     if not args.command:
