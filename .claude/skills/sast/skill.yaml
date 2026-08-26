@@ -1,0 +1,33 @@
+name: sast
+version: 1.0.0
+description: SAST integration with SARIF parsing (Semgrep, Trivy, etc.) — import and triage static findings
+bounded_context: SASTContext
+safety_tier: passive
+owasp_wstg: []
+owasp_api_top10: []
+severity_range: [info, low, medium, high, critical]
+tools_required:
+  - python3
+  - jq
+input_files:
+  - report.sarif
+workflows:
+  import-sarif:
+    description: Import SARIF file and count findings by severity
+    safety_tier: passive
+    inputs: [OUTDIR, SARIF_FILE, WORKSPACE]
+    command: |
+      mkdir -p $OUTDIR/sast && \
+      python3 .claude/skills/sast/scripts/sarif_import.py --workspace "${WORKSPACE:-default}" --sarif "${SARIF_FILE:?Set SARIF_FILE}" --output "$OUTDIR/sast/sarif_findings.json"
+    outputs:
+      - $OUTDIR/sast/sarif_findings.json
+    evidence_dir: $OUTDIR/sast/evidence/
+    detection_signals:
+      - "SARIF imported with severity counts"
+    false_positives:
+      - "SARIF from empty scan shows 0 findings"
+    next:
+      if_findings: null
+      if_no_findings: null
+evidence_templates:
+  sarif_import: "JSON with total and per-severity counts from SARIF"
